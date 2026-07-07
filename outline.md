@@ -7,22 +7,34 @@ track or as two standalone courses.
 
 ---
 
-## Overview
+## Description
 
-Apache Kafka is the de-facto standard for real-time data streaming — fault-tolerant,
-horizontally scalable, and the backbone of modern event-driven architectures at LinkedIn,
-Uber, Netflix, and thousands of enterprises. This track takes participants from Kafka
-fundamentals through the intermediate developer skills needed to build production streaming
-applications: producers and consumers, delivery guarantees and exactly-once semantics,
-schema management, Kafka Connect pipelines, and stream processing.
+Apache Kafka has become the backbone of real-time data infrastructure. It is a distributed,
+fault-tolerant, horizontally scalable streaming platform used by LinkedIn, Uber, Netflix,
+and thousands of enterprises to move and process data as it happens — powering event-driven
+microservices, log aggregation, analytics pipelines, and machine-learning feature stores.
+For developers building modern systems, working fluently with Kafka has become an essential
+skill.
 
-The course is **current to Apache Kafka 4** — ZooKeeper has been fully removed (KRaft), and
-the material reflects today's ecosystem (Flink SQL, Schema Registry, modern client APIs)
-rather than legacy patterns.
+This hands-on course takes developers from Kafka fundamentals through the intermediate
+skills needed to build production streaming applications. It begins with a one-day
+introduction to the core concepts — topics, partitions, offsets, producers, consumers, and
+cluster architecture — and then moves into three days of intermediate, code-focused
+development: writing robust producers and consumers, choosing and configuring delivery
+guarantees (including exactly-once), managing schemas and their evolution with the Schema
+Registry, building data pipelines with Kafka Connect, and processing streams with Kafka
+Streams and Flink SQL.
 
-The emphasis is **programming and hands-on practice** over cluster administration, with
-every concept reinforced by a lab. All labs run in a self-contained environment; all
-materials are provided in Git for participants to revisit and re-run afterward.
+The course is current to **Apache Kafka 4**, which removed Apache ZooKeeper entirely in
+favor of the built-in **KRaft** consensus protocol. Participants learn today's architecture
+and ecosystem rather than legacy patterns, and every concept is reinforced with a lab. The
+emphasis throughout is on **programming and practical application** over cluster
+administration, and all course materials — slides, labs, and code — are provided in a Git
+repository so participants can revisit and re-run the exercises after the course.
+
+The introductory day makes the course accessible to those new to Kafka, while the
+intermediate days provide the depth working developers need to be productive on real
+streaming projects.
 
 ## Audience
 
