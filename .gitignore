@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Course: generated slide build artifacts (md → pptx pipeline) ---
+**/assembly.out*/
+slides/release/
+*.pptx
+
+# --- Course: local working notes / drafts (kept in-repo, not committed) ---
+drafts/
