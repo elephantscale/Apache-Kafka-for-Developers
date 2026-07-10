@@ -1,0 +1,302 @@
+# Advanced Kafka Streaming — lab cluster
+#
+# Apache Kafka 4.x in KRaft mode (ZooKeeper-free). Three combined
+# broker+controller nodes + Kafka UI. Kafka 4 preview features
+# (Share Groups / KIP-932, KIP-848 rebalance protocol) are enabled.
+#
+# Listener design (this is the part that makes the labs work):
+#   CONTROLLER (:9093)  KRaft controller quorum, docker network only.
+#   PLAINTEXT  (:9092)  Inter-broker + in-container clients + kafka-ui.
+#                       Advertised by docker name (kafka-1:9092, ...), so a
+#                       `docker exec kafka-1 ... --bootstrap-server localhost:9092`
+#                       can follow metadata to leaders on ANY broker.
+#   HOST       (:9094)  Clients on your machine. Advertised as localhost:909X
+#                       and published to that host port. NOT used inside containers.
+#
+# Result:
+#   docker exec kafka-1 ... --bootstrap-server localhost:9092   -> works for all brokers
+#   host client (Python, nc) ... localhost:9092 / 9093 / 9094    -> works for all brokers
+
+x-kafka-common: &kafka-common
+  image: apache/kafka:4.0.0
+  networks: [kafka]
+  healthcheck:
+    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+    interval: 10s
+    timeout: 10s
+    retries: 15
+    start_period: 20s
+
+x-kafka-env: &kafka-env
+  # Put the Kafka CLI tools on PATH so the labs' bare `docker exec kafka-1
+  # kafka-topics.sh ...` form resolves (the apache/kafka image keeps them in
+  # /opt/kafka/bin, which is not on PATH by default).
+  PATH: "/opt/kafka/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  # Cap each broker's JVM heap. The apache/kafka image defaults to ~1 GB per
+  # broker, so three brokers reserve 3 GB+ before OS page cache — enough to
+  # swap-thrash a small VM into unresponsiveness. 512m x3 ≈ 1.5 GB of heap,
+  # which fits comfortably and degrades gracefully if a VM is undersized.
+  KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+  # Same cluster id on every node (required to form one KRaft cluster).
+  CLUSTER_ID: "5L6g3nShT-eMCtK--X86sw"
+  KAFKA_PROCESS_ROLES: "broker,controller"
+  KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+  KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+  KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:9094"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT"
+  # Internal topics replicate across all three brokers.
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "3"
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "2"
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: "3"
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: "2"
+  # Kafka 4 preview features (KIP-848 next-gen rebalance + KIP-932 share groups).
+  KAFKA_GROUP_COORDINATOR_REBALANCE_PROTOCOLS: "classic,consumer,share"
+  KAFKA_GROUP_SHARE_ENABLE: "true"
+  KAFKA_UNSTABLE_API_VERSIONS_ENABLE: "true"
+
+services:
+  kafka-1:
+    <<: *kafka-common
+    container_name: kafka-1
+    ports:
+      - "9092:9094"   # host 9092 -> kafka-1 HOST listener
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: "1"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092,HOST://localhost:9092"
+
+  kafka-2:
+    <<: *kafka-common
+    container_name: kafka-2
+    ports:
+      - "9093:9094"   # host 9093 -> kafka-2 HOST listener
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: "2"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092,HOST://localhost:9093"
+
+  kafka-3:
+    <<: *kafka-common
+    container_name: kafka-3
+    ports:
+      - "9094:9094"   # host 9094 -> kafka-3 HOST listener
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: "3"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092,HOST://localhost:9094"
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: kafka-ui
+    networks: [kafka]
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "advanced-kafka-lab"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      DYNAMIC_CONFIG_ENABLED: "true"
+      # Cap the UI's JVM heap too, so it can't balloon on a small VM.
+      JAVA_OPTS: "-Xmx256m"
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  # ---- Schema Registry (core for this course: Module 4 Avro/Protobuf, used across labs) ----
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.7.0
+    container_name: schema-registry
+    networks: [kafka]
+    ports:
+      - "8081:8081"   # Schema Registry REST API
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: "schema-registry"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  # =====================================================================
+  # OPTIONAL PROFILES — started on demand, NOT part of the core cluster.
+  #   docker compose --profile monitoring up -d   # Labs 3 & 7
+  #   docker compose --profile connect    up -d   # Lab 4
+  # FIRST CUT — validated as YAML but not yet brought up; verify on the VM.
+  # =====================================================================
+
+  # ---- monitoring profile (Labs 3 & 7): Prometheus + Grafana + kafka-exporter ----
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    profiles: ["monitoring"]
+    networks: [kafka]
+    command:
+      - "--kafka.server=kafka-1:9092"
+      - "--kafka.server=kafka-2:9092"
+      - "--kafka.server=kafka-3:9092"
+    ports:
+      - "9308:9308"   # Prometheus metrics, incl. kafka_consumergroup_lag (Lab 7 KEDA)
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    profiles: ["monitoring"]
+    networks: [kafka]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    profiles: ["monitoring"]
+    networks: [kafka]
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    # Auto-provision the Prometheus datasource + the Kafka Cluster Overview dashboard,
+    # so Grafana is populated on startup (no manual datasource/dashboard setup).
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ---- connect profile (Lab 4): PostgreSQL + MinIO + Kafka Connect ----
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    profiles: ["connect"]
+    networks: [kafka]
+    environment:
+      POSTGRES_DB: "orders_db"
+      POSTGRES_USER: "kafka_user"
+      POSTGRES_PASSWORD: "kafka_pw"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./connect/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kafka_user -d orders_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    profiles: ["connect"]
+    networks: [kafka]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+
+  minio-setup:
+    image: minio/mc:latest
+    container_name: minio-setup
+    profiles: ["connect"]
+    networks: [kafka]
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "until mc alias set local http://minio:9000 minioadmin minioadmin; do echo 'waiting for minio'; sleep 2; done; mc mb --ignore-existing local/kafka-data-lake; echo 'bucket kafka-data-lake ready';"
+    restart: "no"
+
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.7.0
+    container_name: kafka-connect
+    profiles: ["connect"]
+    networks: [kafka]
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+    ports:
+      - "8083:8083"   # Connect REST API
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      CONNECT_GROUP_ID: "connect-cluster"
+      CONNECT_CONFIG_STORAGE_TOPIC: "connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+    # First cut: install the JDBC + S3 connectors at startup (needs internet).
+    # For the golden image, bake these into a custom image so class-time startup
+    # is offline and fast.
+    command:
+      - bash
+      - -c
+      - |
+        confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest || true
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest || true
+        exec /etc/confluent/docker/run
+
+  # ---- flink profile (OPTIONAL Lab 8): Flink JobManager + TaskManager + SQL client ----
+  # The flink-sql-connector-kafka jar is mounted onto Flink's classpath so Flink SQL can
+  # read/write Kafka topics. Start with: docker compose --profile flink up -d
+  # Verified: Flink 1.20.1 + flink-sql-connector-kafka:3.3.0-1.20 read/write Kafka
+  # end-to-end (source table, filter, aggregation, tumbling window, INSERT INTO sink).
+  flink-jobmanager:
+    image: flink:1.20.1-scala_2.12-java17
+    container_name: flink-jobmanager
+    profiles: ["flink"]
+    networks: [kafka]
+    ports:
+      - "8082:8081"   # Flink Web UI (host 8082; 8081 is Schema Registry)
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+    volumes:
+      - ./flink/flink-sql-connector-kafka.jar:/opt/flink/lib/flink-sql-connector-kafka.jar:ro
+
+  flink-taskmanager:
+    image: flink:1.20.1-scala_2.12-java17
+    container_name: flink-taskmanager
+    profiles: ["flink"]
+    networks: [kafka]
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - ./flink/flink-sql-connector-kafka.jar:/opt/flink/lib/flink-sql-connector-kafka.jar:ro
+
+networks:
+  kafka:
+    name: kafka

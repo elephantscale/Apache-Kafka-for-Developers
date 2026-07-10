@@ -1,0 +1,12 @@
+-- Lab 4 (connect profile) — database bootstrap.
+--
+-- The `orders_db` database and `kafka_user` role are created by the postgres
+-- image from POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD in docker-compose.yml.
+--
+-- The `orders` table is intentionally NOT created here: Lab 4 Exercise 1.1 has
+-- students CREATE and seed it (id, order_id, customer_id, amount, status,
+-- created_at, updated_at) as part of the exercise. Pre-creating it here would
+-- collide with that step (table already exists) and use a different schema than
+-- the later CDC / DLQ exercises expect.
+--
+-- Nothing to do at init time.
