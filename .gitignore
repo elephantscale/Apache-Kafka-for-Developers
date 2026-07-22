@@ -224,3 +224,6 @@ slides/release/
 
 # --- Course: local working notes / drafts (kept in-repo, not committed) ---
 drafts/
+
+# JetBrains IDE
+.idea/
