@@ -1,54 +1,49 @@
 # Labs Setup
 
+This is a **developer** course. The lab environment is a self-contained **Docker
+Compose** cluster you run on your own machine (or a provided VM). There is no
+Kubernetes and no cluster administration to do — you bring the cluster up once and
+spend the rest of the course writing producers, consumers, and stream-processing
+code against it.
+
 ## Cluster Model & Versions
 
 - **Apache Kafka 4.x in KRaft mode** — ZooKeeper-free. There is no ZooKeeper in any lab.
-- Labs run against a local **Docker Compose** 3-broker cluster (combined broker+controller nodes) for speed.
-- The **main course environment is Strimzi on Kubernetes.** Every `kafka-*.sh` command is identical between the two — on Strimzi, run it via `kubectl exec` into a broker pod instead of `docker exec kafka-1`.
-- Examples use `docker exec kafka-1 …`; some labs alias this to `k1`.
+- A local **Docker Compose** cluster of **3 combined broker+controller nodes**
+  (`kafka-1`, `kafka-2`, `kafka-3`), plus **Schema Registry** and a web **Kafka UI**.
+- Optional add-on stacks are started on demand via Compose *profiles*:
+  `connect` (Kafka Connect + Postgres + MinIO), `flink` (Flink SQL), and
+  `monitoring` (Prometheus + Grafana).
+- The Kafka CLI tools (`kafka-*.sh`) run **inside** the broker containers via
+  `docker exec kafka-1 …`, so **no host JDK is required**. Your code runs on the
+  host in Python.
 
-### Kafka 4 preview features
+### How clients connect
 
-Several labs exercise Kafka 4 early-access features that must be enabled on the cluster (the provided lab cluster is pre-configured):
+| From | Bootstrap server |
+|------|------------------|
+| Inside a container (`docker exec kafka-1 …`) | `localhost:9092` |
+| Your Python code on the host | `localhost:9092` (also `9093`, `9094` reach the other brokers) |
 
-- **Share Groups (KIP-932)** — native queue semantics (Labs 1, 6)
-- **KIP-848** next-gen consumer rebalance protocol (Labs 2, 5)
-- **Eligible Leader Replicas / KIP-966** (Lab 2)
-
-If a step reports a feature is unavailable, treat it as instructor-led and verify the cluster's `metadata.version` / feature flags with your instructor.
+Any one of these bootstrap addresses is enough — the client discovers the rest of
+the cluster from broker metadata.
 
 ## Minimum Requirements
 
-- Linux/macOS with Docker and Docker Compose
-- Python 3.9+
-- 8+ GB RAM recommended
+- Linux or macOS with **Docker** and the **Docker Compose v2** plugin
+- **Python 3.9+**
+- 8+ GB RAM recommended (the three brokers are heap-capped to fit a small VM)
 
-> The Kafka CLI tools (`kafka-*.sh`) run **inside** the broker containers via
-> `docker exec`, so no host JDK is required.
+## Install Docker (one-time, per machine)
 
-## One-command setup (recommended)
+If Docker and the Compose **v2** plugin are already installed
+(`docker compose version` prints `v2.x`), skip to *Python environment*.
 
-The student VMs are bare. The fastest path is the bootstrap script, which installs
-**everything** below (Docker + Compose v2, Java 17, Python venv, CLI helpers) and
-adds you to the `docker` group — run it once per VM:
+> Do **not** use `apt install docker.io` — the distro package is often too old and
+> may not include the `docker compose` **v2** plugin the labs require.
 
-```bash
-cd <repo root>
-./labs/bootstrap.sh        # run as your normal user; it calls sudo itself — do NOT run as root
-newgrp docker              # apply docker-group membership in this shell (or log out/in)
-```
-
-It is safe to re-run. The manual steps below explain what it does, and serve as a
-fallback for non-Ubuntu VMs.
-
-## Install Docker (one-time, per VM)
-
-The student VMs do **not** ship with Docker. Run this once on each VM before
-anything else. These steps are for **Ubuntu/Debian**; if your VMs are RHEL /
-Amazon Linux / Fedora, ask your instructor for the `dnf`-based equivalent.
-
-> Do **not** use `apt install docker.io` — the distro package is often too old
-> and may not include the `docker compose` **v2** plugin the labs require.
+These steps are for **Ubuntu/Debian**; on RHEL / Amazon Linux / Fedora use the
+`dnf`-based equivalent, or ask your instructor.
 
 ```bash
 # 1. Remove any old/conflicting packages (safe if none are present)
@@ -87,48 +82,67 @@ docker run --rm hello-world
 > **Debian note:** in step 2 replace both `…/linux/ubuntu…` URLs with
 > `…/linux/debian…`.
 
-## Python Packages
+## Python environment
+
+The labs use the **`confluent-kafka`** client. Create a virtual environment once
+and reuse it for every lab:
 
 ```bash
+cd <repo root>
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install confluent-kafka flask requests
+pip install "confluent-kafka[avro,schemaregistry]" requests
 ```
 
-## Bring Up Core Stack
+`source .venv/bin/activate` again at the start of each session.
+
+## Bring Up the Core Cluster
 
 Run from the repository root (or any folder inside it — `docker compose` searches
-parent directories for `docker-compose.yml`). It will not find the file from outside
-the repo.
+parent directories for `docker-compose.yml`; it will not find the file from outside
+the repo).
 
 ```bash
 docker compose up -d
-docker compose ps
+docker compose ps          # wait until kafka-1/2/3 are "healthy"
 ```
 
-## Optional Profiles
+This starts the three brokers, **Schema Registry** (`:8081`), and the **Kafka UI**
+(open <http://localhost:8080>).
 
-Depending on your compose file, enable extras when needed:
+## Optional Profiles (started only when a lab needs them)
 
 ```bash
-# Kafka Connect labs
+# Lab 06 — Kafka Connect (adds Kafka Connect, Postgres, MinIO)
 docker compose --profile connect up -d
 
-# Monitoring labs
-docker compose --profile monitoring up -d
-
-# Stream processing labs (Apache Flink)
+# Lab 07 — Stream processing with Flink SQL
 docker compose --profile flink up -d
+
+# Lab 08 — Reliability & monitoring (Prometheus + Grafana)
+docker compose --profile monitoring up -d
 ```
 
 ## Verification
 
 ```bash
-# Broker reachability
+# Broker reachable from the host
 nc -zv localhost 9092
 
-# Topic list
+# List topics from inside a broker container
 docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+# Quick Python smoke test (with the venv active)
+python -c "from confluent_kafka.admin import AdminClient; \
+print(AdminClient({'bootstrap.servers':'localhost:9092'}).list_topics(timeout=5).brokers)"
 ```
 
+The Python line should print three broker entries.
+
+## Shutting Down
+
+```bash
+docker compose down            # stop the cluster, keep nothing running
+docker compose down -v         # also remove volumes (fresh start next time)
+```

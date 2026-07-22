@@ -1,8 +1,7 @@
-# Advanced Kafka Streaming — lab cluster
+# Apache Kafka for Developers — lab cluster
 #
 # Apache Kafka 4.x in KRaft mode (ZooKeeper-free). Three combined
-# broker+controller nodes + Kafka UI. Kafka 4 preview features
-# (Share Groups / KIP-932, KIP-848 rebalance protocol) are enabled.
+# broker+controller nodes + Kafka UI + Schema Registry.
 #
 # Listener design (this is the part that makes the labs work):
 #   CONTROLLER (:9093)  KRaft controller quorum, docker network only.
