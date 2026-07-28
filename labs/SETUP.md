@@ -30,9 +30,13 @@ the cluster from broker metadata.
 
 ## Minimum Requirements
 
-- Linux or macOS with **Docker** and the **Docker Compose v2** plugin
-- **Python 3.9+**
-- 8+ GB RAM recommended (the three brokers are heap-capped to fit a small VM)
+- Linux (Ubuntu) or macOS with **Docker** and the **Docker Compose v2** plugin
+- **JDK 17** and **Maven 3.9+** — the labs are Java
+- 8+ GB RAM (12 GB recommended; the three brokers are heap-capped to fit a small VM)
+- *(Optional)* Python 3.9+ — only for the Python reference versions of the early labs
+
+> Provisioning VMs for a class? See **[`VM-SPEC.md`](VM-SPEC.md)** for the full VM
+> specification (sizing, pre-installed software, and offline/filtered-network image prep).
 
 ## Install Docker (one-time, per machine)
 

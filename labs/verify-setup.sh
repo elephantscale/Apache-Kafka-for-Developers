@@ -74,17 +74,24 @@ if have docker && docker info >/dev/null 2>&1; then
   else bad "docker run failed — check daemon status / network egress to registry"; fi
 fi
 
-# --- 3. Python client environment ------------------------------------------
-head "3. Python environment"
+# --- 3. Java build environment (the labs are Java) --------------------------
+head "3. Java build environment"
+if have java; then
+  jv=$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')
+  [ "${jv:-0}" -ge 17 ] 2>/dev/null && ok "java $(java -version 2>&1 | head -1 | tr -d '"')" \
+    || bad "java present but < 17 (need JDK 17): $(java -version 2>&1 | head -1)"
+else bad "java not installed — need JDK 17 (e.g. Temurin/OpenJDK 17)"; fi
+
+if have mvn; then ok "maven present — $(mvn -v 2>/dev/null | head -1)"
+else bad "maven not installed — need Apache Maven 3.9+ (mvn)"; fi
+
+# --- 3b. Python (optional — only for the legacy Python reference labs) ------
+head "3b. Python (optional)"
 if have python3; then
   pv=$(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null)
   python3 -c 'import sys;exit(0 if sys.version_info[:2]>=(3,9) else 1)' 2>/dev/null \
-    && ok "python3 $pv (>= 3.9)" || bad "python3 $pv — need 3.9+"
-else bad "python3 not installed — need 3.9+"; fi
-
-if python3 -c 'import confluent_kafka' 2>/dev/null; then
-  ok "confluent-kafka importable ($(python3 -c 'import confluent_kafka as c;print(c.__version__)' 2>/dev/null))"
-else warn "confluent-kafka not installed in the active python — run: pip install \"confluent-kafka[avro,schemaregistry]\" requests"; fi
+    && ok "python3 $pv (>= 3.9)" || warn "python3 $pv — 3.9+ if using the Python reference labs"
+else warn "python3 not installed — optional, only for the Python reference labs"; fi
 
 # --- 4. Repository ----------------------------------------------------------
 head "4. Course repository"
