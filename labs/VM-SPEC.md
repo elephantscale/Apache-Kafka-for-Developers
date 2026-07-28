@@ -37,18 +37,17 @@ Specification for the training VMs that run the course labs. Share this with the
 - **git**, **curl**, **jq**, **netcat (nc)**
 - *(Optional)* Python 3.9+ — only if the Python reference versions of early labs are used
 
-## Network / Internet Access  ⚠️ critical for a filtered environment
+## Network / Internet Access
 
-The first run pulls container images and Java dependencies from the internet. On a **filtered or
-locked-down network (e.g. the onsite SSA environment), do not rely on live pulls** — pre-stage
-everything into the VM image so class-time requires **zero external egress**:
+The first run pulls container images and Java dependencies from the internet. Ensure the VMs can
+reach: `download.docker.com`, `registry-1.docker.io` (Docker Hub), `ghcr.io`,
+`repo.maven.apache.org` (Maven Central), and `packages.confluent.io` (Confluent).
 
-1. **Pre-pull all Docker images** (list below) into the image so `docker compose up` starts offline.
-2. **Pre-populate the Maven cache** (`~/.m2/repository`) by building the lab project once on the
-   golden image, so `mvn` needs no downloads in class.
-3. *(Alternative)* If live egress is allowed, ensure these hosts are reachable:
-   `download.docker.com`, `registry-1.docker.io` (Docker Hub), `ghcr.io`,
-   `repo.maven.apache.org` (Maven Central), `packages.confluent.io` (Confluent).
+> **SSA delivery note:** students connect to **ProTech-hosted VMs that sit outside SSA's network**,
+> so SSA's filtering does **not** affect image/dependency pulls — live pulls at class time are
+> fine. Pre-staging is therefore **optional** (a nice-to-have for a faster, more reliable class
+> start), not required. If you do want a fully self-contained image, pre-pull the images below and
+> pre-populate the Maven cache (`~/.m2`) by building the lab project once.
 
 ### Docker images to pre-pull
 
