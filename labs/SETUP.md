@@ -86,10 +86,46 @@ docker run --rm hello-world
 > **Debian note:** in step 2 replace both `…/linux/ubuntu…` URLs with
 > `…/linux/debian…`.
 
-## Python environment
+## Java build environment
 
-The labs use the **`confluent-kafka`** client. Create a virtual environment once
-and reuse it for every lab:
+The labs are **Java**, using the Kafka Java client and Maven. Confirm your toolchain:
+
+```bash
+java -version     # JDK 17.x
+mvn -version      # Maven 3.9+
+```
+
+### The per-lab Maven project
+
+Each lab is a small, self-contained Maven project — the lab guide gives you the exact
+`pom.xml` and the classes to create. The shape is always the same:
+
+```
+labNN/
+├── pom.xml                                  # dependencies (kafka-clients, etc.)
+└── src/main/java/com/elephantscale/kafka/   # your .java sources go here
+```
+
+Every lab's `pom.xml` includes at least `org.apache.kafka:kafka-clients`; the Schema
+Registry lab (Lab 05) adds the Confluent Avro serde (`io.confluent:kafka-avro-serializer`)
+and therefore the Confluent Maven repository (`https://packages.confluent.io/maven/`).
+
+Compile and run a class like this (the pattern used throughout the labs):
+
+```bash
+cd labNN
+mvn -q compile
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SomeClass
+# pass program args with -Dexec.args="..."
+```
+
+> The first `mvn` build downloads dependencies from Maven Central (and, for Lab 05,
+> the Confluent repo). If you are on a restricted network, see
+> [`VM-SPEC.md`](VM-SPEC.md) for pre-caching the Maven repository.
+
+### Python (optional)
+
+A few early labs also ship an optional **Python** reference version. Only if you use those:
 
 ```bash
 cd <repo root>
@@ -98,8 +134,6 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install "confluent-kafka[avro,schemaregistry]" requests
 ```
-
-`source .venv/bin/activate` again at the start of each session.
 
 ## Bring Up the Core Cluster
 
@@ -137,12 +171,12 @@ nc -zv localhost 9092
 # List topics from inside a broker container
 docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list
 
-# Quick Python smoke test (with the venv active)
-python -c "from confluent_kafka.admin import AdminClient; \
-print(AdminClient({'bootstrap.servers':'localhost:9092'}).list_topics(timeout=5).brokers)"
+# Count reachable brokers (should print 3)
+docker exec kafka-1 kafka-broker-api-versions.sh --bootstrap-server localhost:9092 | grep -c "id:"
 ```
 
-The Python line should print three broker entries.
+For a full end-to-end readiness check (Docker, JDK/Maven, and a produce/consume smoke
+test), run `./labs/verify-setup.sh --full` from the repo root.
 
 ## Shutting Down
 
