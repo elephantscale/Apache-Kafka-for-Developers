@@ -5,12 +5,13 @@
 - **Duration:** ~60 minutes
 - **Difficulty:** Intermediate
 - **Kafka version:** 4.x (KRaft mode — ZooKeeper-free)
+- **Language:** Java (Kafka Java client, Maven)
 
 ## Objectives
 
 By the end of this lab you will be able to:
 
-- Write a Python producer with `confluent-kafka` and confirm delivery via callbacks
+- Write a Java producer with the Kafka client and confirm delivery via a `Callback`
 - Control partitioning with message keys and observe per-key ordering
 - Tune batching (`linger.ms`, `batch.size`) and compression, and measure the effect
 - Choose an `acks` level and reason about its durability trade-off
@@ -20,19 +21,64 @@ By the end of this lab you will be able to:
 
 - The lab environment from [`labs/SETUP.md`](../SETUP.md); the core cluster running
   (`docker compose up -d`, all three brokers healthy)
-- The Python venv active with `confluent-kafka` installed:
+- **JDK 17** and **Maven** on the host:
   ```bash
-  source .venv/bin/activate
-  python -c "import confluent_kafka; print(confluent_kafka.__version__)"
+  java -version    # 17.x
+  mvn -version     # 3.9+
   ```
 - Lab 01 completed (you can create topics and read consumer lag)
 
 ## Lab Environment
 
 > Developer lab against the local **Docker Compose** cluster (3 KRaft brokers, no
-> ZooKeeper, no Kubernetes). Your code runs on the **host** in Python and connects to
-> `localhost:9092`. Kafka CLI tools run inside the brokers via `docker exec kafka-1 …`.
-> Save each Python file in your working directory and run it with the venv active.
+> ZooKeeper, no Kubernetes). Your code is a Maven project that runs on the **host** and
+> connects to `localhost:9092`. Kafka CLI tools run inside the brokers via
+> `docker exec kafka-1 …`.
+
+### Java project setup
+
+Create a project folder `lab02/` with this `pom.xml`, and put sources under
+`lab02/src/main/java/com/elephantscale/kafka/`:
+
+```xml
+<!-- lab02/pom.xml -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.elephantscale.kafka</groupId>
+  <artifactId>lab02</artifactId>
+  <version>1.0</version>
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>3.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.13</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- run a class with: mvn -q exec:java -Dexec.mainClass=... -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
 
 ### Create the lab topic
 
@@ -45,52 +91,64 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 
 ## Exercise 1 — A First Producer with Delivery Reports
 
-> **What this shows:** `produce()` is asynchronous — it queues a record and returns
+> **What this shows:** `send()` is asynchronous — it queues a record and returns
 > immediately. You only learn the outcome (final partition/offset, or an error) from the
-> **delivery callback**, and only after `flush()`/`poll()` lets the background sender run.
+> **delivery callback**, which the client fires from a background thread once the broker
+> acknowledges; `flush()` blocks until all in-flight sends complete.
 
 ### 1.1 Write the producer
 
-```python
-# save as producer_basic.py
-import json
-from confluent_kafka import Producer
+```java
+// save as ProducerBasic.java
+package com.elephantscale.kafka;
 
-producer = Producer({'bootstrap.servers': 'localhost:9092'})
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-def delivery_report(err, msg):
-    if err is not None:
-        print(f'FAILED: {err}')
-    else:
-        print(f'ok  {msg.topic()}[{msg.partition()}] @ offset {msg.offset()}')
+public class ProducerBasic {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-for i in range(10):
-    event = {'order_id': i, 'status': 'PLACED'}
-    producer.produce(
-        topic='lab02-orders',
-        key=f'user-{i % 3}',                    # 3 distinct keys
-        value=json.dumps(event).encode('utf-8'),
-        callback=delivery_report,
-    )
-    producer.poll(0)        # give the sender thread a chance to fire callbacks
-
-producer.flush()            # block until all deliveries complete
-print('done')
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < 10; i++) {
+        String value = String.format("{\"order_id\": %d, \"status\": \"PLACED\"}", i);
+        ProducerRecord<String, String> record =
+            new ProducerRecord<>("lab02-orders", "user-" + (i % 3), value);   // 3 distinct keys
+        producer.send(record, (RecordMetadata md, Exception err) -> {
+          if (err != null) {
+            System.out.println("FAILED: " + err);
+          } else {
+            System.out.printf("ok  %s[%d] @ offset %d%n", md.topic(), md.partition(), md.offset());
+          }
+        });
+      }
+      producer.flush();   // block until all deliveries complete (callbacks fire)
+    }
+    System.out.println("done");
+  }
+}
 ```
 
 ### 1.2 Run it
 
 ```bash
-python producer_basic.py
+cd lab02
+mvn -q compile
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerBasic
 ```
 
 You'll see ten `ok …[partition] @ offset …` lines. Note that keys `user-0/1/2` map to
 specific partitions.
 
-> **If a sharp student asks:** why `producer.poll(0)`? The client delivers callbacks from
-> its background thread only when you call `poll()` or `flush()`. Without it, all ten
-> callbacks would fire at the end during `flush()` — fine here, but in a long-running
-> producer you call `poll(0)` in the loop so callbacks and errors surface promptly.
+> **If a sharp student asks:** when do the callbacks fire? The client delivers each callback
+> from its background I/O thread once the broker acknowledges that record — not on the calling
+> thread. `flush()` (or closing the producer, as the try-with-resources does here) blocks until
+> every in-flight send has completed and its callback has run, so no delivery is lost when the
+> program exits.
 
 ### 1.3 Confirm from the CLI
 
@@ -110,42 +168,65 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 
 ### 2.1 Prove same-key → same-partition
 
-```python
-# save as producer_keys.py
-from confluent_kafka import Producer
+```java
+// save as ProducerKeys.java
+package com.elephantscale.kafka;
 
-producer = Producer({'bootstrap.servers': 'localhost:9092'})
-seen = {}
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-def report(err, msg):
-    if err is None:
-        seen.setdefault(msg.key().decode(), set()).add(msg.partition())
+public class ProducerKeys {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-for i in range(30):
-    key = f'user-{i % 3}'
-    producer.produce('lab02-orders', key=key, value=f'event-{i}', callback=report)
-producer.flush()
+    // key -> set of partitions it landed on
+    Map<String, Set<Integer>> seen = new ConcurrentHashMap<>();
 
-for key, partitions in sorted(seen.items()):
-    print(f'{key} -> partition(s) {sorted(partitions)}')
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < 30; i++) {
+        String key = "user-" + (i % 3);
+        producer.send(new ProducerRecord<>("lab02-orders", key, "event-" + i),
+          (md, err) -> {
+            if (err == null) {
+              seen.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet()).add(md.partition());
+            }
+          });
+      }
+      producer.flush();
+    }
+
+    new TreeMap<>(seen).forEach((key, partitions) ->
+      System.out.println(key + " -> partition(s) " + new TreeSet<>(partitions)));
+  }
+}
 ```
 
 ```bash
-python producer_keys.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerKeys
 ```
 
 Each key prints **exactly one** partition — no key ever spans partitions.
 
 ### 2.2 Now go keyless
 
-Change the `produce(...)` line to drop the key:
+Change the `send(...)` to drop the key (pass `null`), and bucket by value instead of key:
 
-```python
-    producer.produce('lab02-orders', value=f'event-{i}', callback=report)
+```java
+        final int n = i;
+        producer.send(new ProducerRecord<>("lab02-orders", null, "event-" + i),
+          (md, err) -> {
+            if (err == null) {
+              seen.computeIfAbsent("event-" + n, k -> ConcurrentHashMap.newKeySet()).add(md.partition());
+            }
+          });
 ```
 
-Adjust `report` to bucket by value instead of key, re-run, and observe that keyless
-records are **spread across all three partitions**.
+Re-run and observe that keyless records are **spread across all three partitions**.
 
 > **If a sharp student asks:** two different keys landed on the same partition — is that a
 > bug? No. Keys are hashed into 3 buckets, so distinct keys can collide onto one partition.
@@ -161,44 +242,52 @@ records are **spread across all three partitions**.
 
 ### 3.1 A throughput harness
 
-```python
-# save as producer_throughput.py
-import sys, time, json
-from confluent_kafka import Producer
+```java
+// save as ProducerThroughput.java
+package com.elephantscale.kafka;
 
-# Pass config as CLI args: linger_ms compression  (e.g. "0 none" or "20 zstd")
-linger = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-compression = sys.argv[2] if len(sys.argv) > 2 else 'none'
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'linger.ms': linger,
-    'batch.size': 65536,
-    'compression.type': compression,
-    'acks': 'all',
-})
+public class ProducerThroughput {
+  public static void main(String[] args) {
+    // args: <linger.ms> <compression>   e.g. "0 none" or "20 zstd"
+    int linger = args.length > 0 ? Integer.parseInt(args[0]) : 0;
+    String compression = args.length > 1 ? args[1] : "none";
 
-N = 100_000
-payload = json.dumps({'data': 'x' * 200}).encode()   # ~200-byte records
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.LINGER_MS_CONFIG, linger);
+    p.put(ProducerConfig.BATCH_SIZE_CONFIG, 65536);
+    p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compression);
+    p.put(ProducerConfig.ACKS_CONFIG, "all");
 
-start = time.time()
-for i in range(N):
-    producer.produce('lab02-orders', key=f'k-{i % 1000}', value=payload)
-    if i % 10_000 == 0:
-        producer.poll(0)
-producer.flush()
-elapsed = time.time() - start
+    int n = 100_000;
+    String payload = "{\"data\": \"" + "x".repeat(200) + "\"}";   // ~200-byte records
 
-print(f'linger.ms={linger:<3} compression={compression:<6} '
-      f'{N} records in {elapsed:.2f}s  →  {N/elapsed:,.0f} rec/s')
+    long start = System.currentTimeMillis();
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < n; i++) {
+        producer.send(new ProducerRecord<>("lab02-orders", "k-" + (i % 1000), payload));
+      }
+      producer.flush();
+    }
+    double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+    System.out.printf("linger.ms=%-3d compression=%-6s %d records in %.2fs  ->  %,.0f rec/s%n",
+        linger, compression, n, elapsed, n / elapsed);
+  }
+}
 ```
 
 ### 3.2 Compare configurations
 
 ```bash
-python producer_throughput.py 0  none
-python producer_throughput.py 20 none
-python producer_throughput.py 20 zstd
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="0 none"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="20 none"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="20 zstd"
 ```
 
 Compare the `rec/s`. Typically `linger.ms=20` beats `0`, and `zstd` on top adds more —
@@ -219,28 +308,42 @@ larger, compressed batches make far better use of the network.
 
 ### 4.1 Time the acks levels
 
-```python
-# save as producer_acks.py
-import sys, time
-from confluent_kafka import Producer
+```java
+// save as ProducerAcks.java
+package com.elephantscale.kafka;
 
-acks = sys.argv[1] if len(sys.argv) > 1 else 'all'   # 0 | 1 | all
-producer = Producer({'bootstrap.servers': 'localhost:9092', 'acks': acks})
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-N = 50_000
-start = time.time()
-for i in range(N):
-    producer.produce('lab02-orders', key=f'k-{i}', value=f'v-{i}')
-    if i % 10_000 == 0:
-        producer.poll(0)
-producer.flush()
-print(f'acks={acks:<3} {N} records in {time.time()-start:.2f}s')
+public class ProducerAcks {
+  public static void main(String[] args) {
+    String acks = args.length > 0 ? args[0] : "all";   // 0 | 1 | all
+
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.ACKS_CONFIG, acks);
+
+    int n = 50_000;
+    long start = System.currentTimeMillis();
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < n; i++) {
+        producer.send(new ProducerRecord<>("lab02-orders", "k-" + i, "v-" + i));
+      }
+      producer.flush();
+    }
+    double elapsed = (System.currentTimeMillis() - start) / 1000.0;
+    System.out.printf("acks=%-3s %d records in %.2fs%n", acks, n, elapsed);
+  }
+}
 ```
 
 ```bash
-python producer_acks.py 0
-python producer_acks.py 1
-python producer_acks.py all
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="0"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="1"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="all"
 ```
 
 `acks=0` is fastest and `acks=all` slowest, but on a healthy 3-broker cluster the gap is
@@ -255,29 +358,41 @@ small — and only `acks=all` guarantees no loss if a broker fails mid-write.
 ## Exercise 5 — The Idempotent Producer
 
 > **What this shows:** with retries, a lost ack causes the producer to resend a record the
-> broker already wrote — a **duplicate**. `enable.idempotence=True` makes the broker
+> broker already wrote — a **duplicate**. `enable.idempotence=true` makes the broker
 > de-duplicate the producer's retries (via a producer id + per-partition sequence number),
 > giving exactly-once *delivery to the broker* while preserving order.
 
 ### 5.1 Turn it on
 
-```python
-# save as producer_idempotent.py
-from confluent_kafka import Producer
+```java
+// save as ProducerIdempotent.java
+package com.elephantscale.kafka;
 
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'enable.idempotence': True,     # implies acks=all and safe retry/in-flight settings
-})
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-for i in range(5):
-    producer.produce('lab02-orders', key='user-1', value=f'idempotent-{i}')
-producer.flush()
-print('sent 5 idempotent records for key user-1')
+public class ProducerIdempotent {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);   // implies acks=all + safe retries
+
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < 5; i++) {
+        producer.send(new ProducerRecord<>("lab02-orders", "user-1", "idempotent-" + i));
+      }
+      producer.flush();
+    }
+    System.out.println("sent 5 idempotent records for key user-1");
+  }
+}
 ```
 
 ```bash
-python producer_idempotent.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerIdempotent
 ```
 
 It runs like a normal producer — the guarantee is invisible until a retry happens. The
@@ -288,7 +403,7 @@ you care about.
 
 Answer these before moving on (discussion, not code):
 
-1. If **your program** runs `producer_idempotent.py` twice, do you get duplicates in the
+1. If **your program** runs `ProducerIdempotent` twice, do you get duplicates in the
    topic? Why does idempotence not help here?
 2. Idempotence de-dupes retries **to one partition**. Which stronger feature would you need
    to make a *consume → process → produce* step exactly-once across partitions?
@@ -302,17 +417,17 @@ Answer these before moving on (discussion, not code):
 
 ## Review Questions
 
-1. `produce()` returned without error but the record never reached the topic. Give two
-   reasons this can happen and the one call that would have surfaced the problem.
+1. `send()` returned without throwing but the record never reached the topic. Give two
+   reasons this can happen and the one call/mechanism that would have surfaced the problem.
 2. You need all events for a given `account_id` processed in order. What must you set on the
    producer, and what is the resulting guarantee's scope?
 3. Raising `linger.ms` from 0 to 20 increased throughput but the average latency barely
    moved under load. Why?
 4. Your team sets `acks=all` and believes data is safe on multiple brokers, but a broker
    failure still lost acknowledged records. What topic-level setting was probably missing?
-5. Explain the duplicate scenario that `enable.idempotence=True` prevents, and name one
+5. Explain the duplicate scenario that `enable.idempotence=true` prevents, and name one
    duplicate scenario it does **not** prevent.
-6. Why is `enable.idempotence=True` considered a reasonable default rather than a
+6. Why is `enable.idempotence=true` considered a reasonable default rather than a
    specialized option?
 
 ## What's Next
