@@ -63,7 +63,9 @@ else bad "docker not installed — see labs/SETUP.md 'Install Docker'"; fi
 
 if docker compose version >/dev/null 2>&1; then
   cv=$(docker compose version --short 2>/dev/null || docker compose version 2>/dev/null | head -1)
-  case "$cv" in v2*|2.*) ok "docker compose v2 plugin — $cv" ;; *) warn "docker compose present but not clearly v2 ($cv)" ;; esac
+  cmaj=$(printf '%s' "$cv" | grep -oE '[0-9]+' | head -1)
+  if [ -n "$cmaj" ] && [ "$cmaj" -ge 2 ] 2>/dev/null; then ok "docker compose plugin (v2+) — $cv"
+  else warn "docker compose present but not clearly v2 ($cv)"; fi
 else bad "docker compose v2 plugin missing (do NOT use legacy 'docker-compose')"; fi
 
 if have docker && docker info >/dev/null 2>&1; then ok "docker usable by '$(id -un)' without sudo"
@@ -77,12 +79,20 @@ fi
 # --- 3. Java build environment (the labs are Java) --------------------------
 head "3. Java build environment"
 if have java; then
-  jv=$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')
-  [ "${jv:-0}" -ge 17 ] 2>/dev/null && ok "java $(java -version 2>&1 | head -1 | tr -d '"')" \
-    || bad "java present but < 17 (need JDK 17): $(java -version 2>&1 | head -1)"
+  # First line of `java -version` (stderr) is e.g.  openjdk version "17.0.19" 2026-04-21
+  # or  openjdk 17.0.19 ...  — grab the first dotted version token, then its major.
+  jline=$(java -version 2>&1 | grep -iE 'version|openjdk|jdk|jre|runtime' | head -1)
+  [ -z "$jline" ] && jline=$(java -version 2>&1 | head -1)
+  jver=$(printf '%s\n' "$jline" | grep -oE '[0-9]+(\.[0-9]+)+' | head -1)
+  jmaj=${jver%%.*}
+  [ "$jmaj" = "1" ] && jmaj=$(printf '%s\n' "$jver" | cut -d. -f2)   # legacy 1.8 -> 8
+  if [ -n "$jmaj" ] && [ "$jmaj" -ge 17 ] 2>/dev/null; then ok "java ${jver:-$jmaj}"
+  else bad "java present but < 17 (need JDK 17): ${jline:-unknown}"; fi
 else bad "java not installed — need JDK 17 (e.g. Temurin/OpenJDK 17)"; fi
 
-if have mvn; then ok "maven present — $(mvn -v 2>/dev/null | head -1)"
+if have mvn; then
+  mline=$(mvn -v 2>/dev/null | head -1)
+  ok "maven present — ${mline:-(version reported)}"
 else bad "maven not installed — need Apache Maven 3.9+ (mvn)"; fi
 
 # --- 3b. Python (optional — only for the legacy Python reference labs) ------
