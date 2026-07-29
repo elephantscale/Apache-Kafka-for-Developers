@@ -5,12 +5,13 @@
 - **Duration:** ~60 minutes
 - **Difficulty:** Intermediate
 - **Kafka version:** 4.x (KRaft mode — ZooKeeper-free)
+- **Language:** Java (Kafka Java client, Maven)
 
 ## Objectives
 
 By the end of this lab you will be able to:
 
-- Write a Python consumer with a proper poll loop and error handling
+- Write a Java consumer with a proper poll loop and error handling
 - See how auto-commit can skip records, and fix it with manual commit
 - Choose commit ordering to get at-least-once behavior, and reason about duplicates
 - Seek and replay a partition from an arbitrary offset
@@ -19,15 +20,19 @@ By the end of this lab you will be able to:
 ## Prerequisites
 
 - The core cluster running (`docker compose up -d`, three brokers healthy)
-- Python venv active with `confluent-kafka` (see [`labs/SETUP.md`](../SETUP.md))
-- Lab 02 completed (you have a working producer)
+- **JDK 17** and **Maven** on the host (see [`labs/SETUP.md`](../SETUP.md))
+- Lab 02 completed (you have a working Java producer and the Maven project set up)
 
 ## Lab Environment
 
 > Developer lab against the local **Docker Compose** cluster (3 KRaft brokers, no ZooKeeper,
-> no Kubernetes). Your Python code runs on the host and connects to `localhost:9092`; Kafka
-> CLI tools run inside the brokers via `docker exec kafka-1 …`. Save each file in your
-> working directory and run it with the venv active.
+> no Kubernetes). Your Java code runs on the host and connects to `localhost:9092`; Kafka CLI
+> tools run inside the brokers via `docker exec kafka-1 …`.
+>
+> These programs use the small **Maven project** introduced in Lab 02: the `kafka-clients`
+> dependency on the classpath, sources under `src/main/java/com/elephantscale/kafka/`, and each
+> class run with `mvn -q exec:java -Dexec.mainClass=…`. (Consumers here use only `kafka-clients`
+> — no Avro serde needed.)
 
 ### Create the lab topic and a feeder
 
@@ -38,67 +43,95 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 
 We'll drive it with a small producer you can re-run whenever a topic needs data:
 
-```python
-# save as feed.py  — usage: python feed.py <count>
-import sys, json
-from confluent_kafka import Producer
+```java
+// save as Feed.java  — usage: mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"
+package com.elephantscale.kafka;
 
-n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-p = Producer({'bootstrap.servers': 'localhost:9092'})
-for i in range(n):
-    p.produce('lab03-events', key=f'user-{i % 5}',
-              value=json.dumps({'seq': i}).encode())
-p.flush()
-print(f'produced {n} events')
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
+
+public class Feed {
+  public static void main(String[] args) {
+    int n = args.length > 0 ? Integer.parseInt(args[0]) : 100;
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < n; i++) {
+        producer.send(new ProducerRecord<>("lab03-events", "user-" + (i % 5),
+            "{\"seq\": " + i + "}"));
+      }
+      producer.flush();
+    }
+    System.out.println("produced " + n + " events");
+  }
+}
 ```
 
 ```bash
-python feed.py 100
+mvn -q compile
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"
 ```
 
 ---
 
 ## Exercise 1 — A Proper Poll Loop
 
-> **What this shows:** a consumer is a loop of `poll → process → (commit)`. `poll()` returns
-> one message or `None` (a timeout with no data), and you must check `msg.error()` every
-> iteration — not every poll is a record.
+> **What this shows:** a consumer is a loop of `poll → process → (commit)`. `poll()` returns a
+> **batch** of records — possibly empty when the timeout elapses with no data — which you iterate.
+> Errors surface as thrown exceptions, not a per-record error field, so a normal loop just handles
+> the (often empty) batch each cycle.
 
 ### 1.1 Write the consumer
 
-```python
-# save as consumer_basic.py
-import json
-from confluent_kafka import Consumer
+```java
+// save as ConsumerBasic.java
+package com.elephantscale.kafka;
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab03-basic',
-    'auto.offset.reset': 'earliest',    # new group with no commits: start at 0
-})
-consumer.subscribe(['lab03-events'])
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
 
-try:
-    while True:
-        msg = consumer.poll(1.0)
-        if msg is None:
-            continue                    # timeout, no message this cycle
-        if msg.error():
-            print(f'error: {msg.error()}')
-            continue
-        data = json.loads(msg.value())
-        print(f'P{msg.partition()} @ {msg.offset()}  seq={data["seq"]}')
-except KeyboardInterrupt:
-    pass
-finally:
-    consumer.close()                    # graceful leave -> faster rebalance
+public class ConsumerBasic {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab03-basic");
+    p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");   // new group, no commits: start at 0
+    p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p);
+    Runtime.getRuntime().addShutdownHook(new Thread(consumer::wakeup));   // Ctrl-C -> clean stop
+    consumer.subscribe(List.of("lab03-events"));
+
+    try {
+      while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+        for (ConsumerRecord<String, String> r : records) {   // empty batch on timeout -> loop again
+          System.out.printf("P%d @ %d  %s%n", r.partition(), r.offset(), r.value());
+        }
+      }
+    } catch (WakeupException e) {
+      // expected on Ctrl-C
+    } finally {
+      consumer.close();                    // graceful leave -> faster rebalance
+    }
+  }
+}
 ```
 
 ### 1.2 Run it
 
 ```bash
-python feed.py 100      # ensure there's data
-python consumer_basic.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"   # ensure data
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerBasic
 ```
 
 You'll see all 100 events, labeled by partition and offset. Stop with `Ctrl-C`.
@@ -107,62 +140,77 @@ You'll see all 100 events, labeled by partition and offset. Stop with `Ctrl-C`.
 
 Start it a second time. With **no new data** it prints nothing new — the group's committed
 offsets are at the end. That's auto-commit having saved your position (default
-`enable.auto.commit=True`).
+`enable.auto.commit=true`).
 
-> **If a sharp student asks:** why `auto.offset.reset='earliest'`? It only applies the
-> **first** time a group runs (no committed offset yet). After that, the committed offset
-> wins. Change the `group.id` to see it re-read from the beginning as a brand-new group.
+> **If a sharp student asks:** why `auto.offset.reset=earliest`? It only applies the **first**
+> time a group runs (no committed offset yet). After that, the committed offset wins. Change the
+> `group.id` to see it re-read from the beginning as a brand-new group.
 
 ---
 
 ## Exercise 2 — How Auto-Commit Can Lose Data
 
-> **What this shows:** auto-commit commits on a **timer**, not when your work is done. If you
-> crash after the timer commits but before processing finishes, those records are **skipped**
-> on restart — silent data loss.
+> **What this shows:** with auto-commit, the consumer's **position** advances as `poll()` hands you
+> records, and that position is committed automatically on an interval — *not* when your work is
+> done. If you crash after the position was committed but before you finished processing those
+> records, they are **skipped** on restart — silent data loss.
 
 ### 2.1 Simulate slow processing + a crash
 
-```python
-# save as consumer_autocommit_loss.py
-import json, time, os
-from confluent_kafka import Consumer
+```java
+// save as ConsumerAutocommitLoss.java
+package com.elephantscale.kafka;
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab03-autoloss',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': True,
-    'auto.commit.interval.ms': 1000,     # commits every 1s
-})
-consumer.subscribe(['lab03-events'])
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
 
-count = 0
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None or msg.error():
-        continue
-    # Pretend processing is slow. Auto-commit may fire DURING this sleep,
-    # committing offsets for records we haven't finished.
-    time.sleep(0.5)
-    data = json.loads(msg.value())
-    count += 1
-    print(f'processed seq={data["seq"]} (count={count})')
-    if count == 5:
-        print('CRASH before finishing the batch!')
-        os._exit(1)                      # hard exit — no clean commit/close
+public class ConsumerAutocommitLoss {
+  public static void main(String[] args) throws Exception {
+    Properties p = new Properties();
+    p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab03-autoloss");
+    p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    p.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+    p.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 1000);   // auto-commits every 1s
+    p.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);             // one record per poll (clearer demo)
+    p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p);
+    consumer.subscribe(List.of("lab03-events"));
+
+    int count = 0;
+    while (true) {
+      ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+      for (ConsumerRecord<String, String> r : records) {
+        // Pretend processing is slow. The position already advanced when poll() returned this
+        // record, so auto-commit can commit it while we're still "processing".
+        Thread.sleep(500);
+        count++;
+        System.out.println("processed " + r.value() + " (count=" + count + ")");
+        if (count == 5) {
+          System.out.println("CRASH before finishing the batch!");
+          Runtime.getRuntime().halt(1);     // hard exit — no clean commit/close
+        }
+      }
+    }
+  }
+}
 ```
 
 ### 2.2 Run, crash, restart
 
 ```bash
-python feed.py 20
-python consumer_autocommit_loss.py     # processes ~5, then hard-exits
-python consumer_autocommit_loss.py     # restart — note where it resumes
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="20"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerAutocommitLoss   # processes ~5, then hard-exits
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerAutocommitLoss   # restart — note where it resumes
 ```
 
 On restart it likely **skips ahead**, past records it never actually finished — because the
-timer had already committed those offsets. That gap is lost data.
+interval had already committed those offsets. That gap is lost data.
 
 > **If a sharp student asks:** is auto-commit always unsafe? No — it's fine when losing a few
 > records doesn't matter (metrics, logs). The problem is only when "committed" must mean
@@ -172,160 +220,212 @@ timer had already committed those offsets. That gap is lost data.
 
 ## Exercise 3 — Manual Commit for At-Least-Once
 
-> **What this shows:** turn auto-commit off and commit **after** processing. Now a crash
-> before commit causes **re-processing**, not skipping — at-least-once. The price is possible
-> duplicates, so processing should be idempotent.
+> **What this shows:** turn auto-commit off and commit **after** processing. Now a crash before
+> commit causes **re-processing**, not skipping — at-least-once. The price is possible duplicates,
+> so processing should be idempotent.
 
 ### 3.1 Process first, then commit
 
-```python
-# save as consumer_manual.py
-import json, time, os
-from confluent_kafka import Consumer
+```java
+// save as ConsumerManual.java
+package com.elephantscale.kafka;
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab03-manual',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': False,         # WE decide when to commit
-})
-consumer.subscribe(['lab03-events'])
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
 
-count = 0
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None or msg.error():
-        continue
-    data = json.loads(msg.value())       # 1. process
-    time.sleep(0.2)
-    count += 1
-    print(f'processed seq={data["seq"]} (count={count})')
-    consumer.commit(msg)                 # 2. THEN commit (sync)
-    if count == 5:
-        print('CRASH after processing 5, some already committed')
-        os._exit(1)
+public class ConsumerManual {
+  public static void main(String[] args) throws Exception {
+    Properties p = new Properties();
+    p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab03-manual");
+    p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    p.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);      // WE decide when to commit
+    p.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
+    p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p);
+    consumer.subscribe(List.of("lab03-events"));
+
+    int count = 0;
+    while (true) {
+      ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+      for (ConsumerRecord<String, String> r : records) {
+        Thread.sleep(200);                        // 1. process
+        count++;
+        System.out.println("processed " + r.value() + " (count=" + count + ")");
+        if (count == 5) {
+          System.out.println("CRASH after processing 5 but BEFORE committing it");
+          Runtime.getRuntime().halt(1);           // record 5 processed, NOT committed
+        }
+        consumer.commitSync();                     // 2. THEN commit
+      }
+    }
+  }
+}
 ```
 
 ### 3.2 Run, crash, restart
 
 ```bash
-python feed.py 20
-python consumer_manual.py      # processes 5, crashes
-python consumer_manual.py      # restart
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="20"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerManual   # processes 5, crashes
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerManual   # restart
 ```
 
-On restart it resumes at the **last committed** record — no records are skipped. You may see
-one record processed **twice** (processed but the crash beat a later commit): that's
-at-least-once, and exactly why processing must be idempotent.
+On restart it resumes at the **last committed** record. Records 1–4 were committed, but record 5
+was processed and the crash beat its commit — so it is **processed again**: that's at-least-once,
+and exactly why processing must be idempotent.
 
-> **If a sharp student asks:** sync vs async commit? `commit(msg)` (sync) blocks until the
-> broker confirms — safest. `commit(msg, asynchronous=True)` is faster but best-effort; you'd
-> pair it with a final sync commit on shutdown. Committing per-message is simplest to reason
-> about; batching commits is a throughput optimization.
+> **If a sharp student asks:** `commitSync` vs `commitAsync`? `commitSync()` blocks until the
+> broker confirms — safest, and it retries. `commitAsync()` is faster but best-effort (no retry);
+> you'd pair it with a final `commitSync()` on shutdown. Committing per-record is simplest to
+> reason about; committing once per batch is a throughput optimization.
 
 ---
 
 ## Exercise 4 — Seek and Replay
 
-> **What this shows:** committed offsets are only the *default* start. You can position a
-> consumer anywhere in the retained log and re-read — the basis of replay, backfill, and
+> **What this shows:** committed offsets are only the *default* start. You can position a consumer
+> anywhere in the retained log and re-read — the basis of replay, backfill, and
 > reprocess-after-bugfix.
 
 ### 4.1 Replay a partition from the beginning
 
-```python
-# save as consumer_replay.py
-import json
-from confluent_kafka import Consumer, TopicPartition
+```java
+// save as ConsumerReplay.java
+package com.elephantscale.kafka;
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab03-replay',
-    'enable.auto.commit': False,
-})
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
 
-# Assign partition 0 explicitly and rewind to offset 0 (ignore any commits)
-tp = TopicPartition('lab03-events', 0, 0)
-consumer.assign([tp])
-consumer.seek(tp)
+public class ConsumerReplay {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab03-replay");
+    p.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-n = 0
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None:
-        break                            # drained
-    if msg.error():
-        continue
-    n += 1
-    print(f'replayed P0 @ {msg.offset()}  {json.loads(msg.value())}')
-consumer.close()
-print(f'replayed {n} records from partition 0')
+    TopicPartition tp = new TopicPartition("lab03-events", 0);
+    int n = 0;
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p)) {
+      consumer.assign(List.of(tp));              // assign partition 0 explicitly
+      consumer.seekToBeginning(List.of(tp));     // rewind to offset 0, ignore any commits
+      while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+        if (records.isEmpty()) break;            // drained
+        for (ConsumerRecord<String, String> r : records) {
+          n++;
+          System.out.printf("replayed P0 @ %d  %s%n", r.offset(), r.value());
+        }
+      }
+    }
+    System.out.println("replayed " + n + " records from partition 0");
+  }
+}
 ```
 
 ```bash
-python consumer_replay.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerReplay
 ```
 
 It re-reads partition 0 from offset 0, regardless of what any group committed.
 
 > **If a sharp student asks:** how would I replay "everything since 9 AM"? Use
-> `offsets_for_times()` to convert a timestamp to the first offset at/after it, then `seek()`
-> there. Same mechanism, timestamp instead of a literal offset.
+> `consumer.offsetsForTimes(...)` to convert a timestamp to the first offset at/after it, then
+> `seek()` there. Same mechanism, timestamp instead of a literal offset.
 
 ---
 
 ## Exercise 5 — Commit on Rebalance
 
 > **What this shows:** when a rebalance revokes your partitions, anything processed-but-not-
-> committed would be re-processed by whoever picks them up. A rebalance listener lets you
-> commit final offsets in `on_revoke`, right before the partitions leave.
+> committed would be re-processed by whoever picks them up. A rebalance listener lets you commit
+> final offsets in `onPartitionsRevoked`, right before the partitions leave.
 
 ### 5.1 Add a rebalance listener
 
-```python
-# save as consumer_rebalance.py
-import json
-from confluent_kafka import Consumer
+```java
+// save as ConsumerRebalance.java
+package com.elephantscale.kafka;
 
-def on_assign(c, partitions):
-    print(f'ASSIGN  {[p.partition for p in partitions]}')
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
-def on_revoke(c, partitions):
-    print(f'REVOKE  {[p.partition for p in partitions]} — committing first')
-    try:
-        c.commit(asynchronous=False)     # flush progress before losing partitions
-    except Exception as e:
-        print(f'  commit on revoke failed: {e}')
+public class ConsumerRebalance {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab03-rebalance");
+    p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    p.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab03-rebalance',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': False,
-})
-consumer.subscribe(['lab03-events'], on_assign=on_assign, on_revoke=on_revoke)
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p);
+    Runtime.getRuntime().addShutdownHook(new Thread(consumer::wakeup));
 
-try:
-    while True:
-        msg = consumer.poll(1.0)
-        if msg is None or msg.error():
-            continue
-        print(f'P{msg.partition()} @ {msg.offset()}  {json.loads(msg.value())["seq"]}')
-        consumer.commit(msg)
-except KeyboardInterrupt:
-    pass
-finally:
-    consumer.close()
+    ConsumerRebalanceListener listener = new ConsumerRebalanceListener() {
+      @Override public void onPartitionsRevoked(Collection<TopicPartition> parts) {
+        System.out.println("REVOKE  " + ids(parts) + " — committing first");
+        try {
+          consumer.commitSync();                 // flush progress before losing partitions
+        } catch (Exception e) {
+          System.out.println("  commit on revoke failed: " + e);
+        }
+      }
+      @Override public void onPartitionsAssigned(Collection<TopicPartition> parts) {
+        System.out.println("ASSIGN  " + ids(parts));
+      }
+    };
+    consumer.subscribe(List.of("lab03-events"), listener);
+
+    try {
+      while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+        for (ConsumerRecord<String, String> r : records) {
+          System.out.printf("P%d @ %d  %s%n", r.partition(), r.offset(), r.value());
+          consumer.commitSync();
+        }
+      }
+    } catch (WakeupException e) {
+      // shutdown
+    } finally {
+      consumer.close();
+    }
+  }
+
+  static String ids(Collection<TopicPartition> parts) {
+    return parts.stream().map(tp -> String.valueOf(tp.partition()))
+                .collect(Collectors.joining(",", "[", "]"));
+  }
+}
 ```
 
 ### 5.2 Trigger a rebalance
 
 ```bash
-python feed.py 300
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="300"
 # terminal A:
-python consumer_rebalance.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerRebalance
 # terminal B (same group — start while A runs):
-python consumer_rebalance.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerRebalance
 ```
 
 Watch terminal A: when B joins, A prints **REVOKE** for the partitions it gives up (committing
@@ -346,7 +446,7 @@ docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
 
 ## Review Questions
 
-1. `poll()` returned `None`. Does that mean the topic is empty? What should your loop do?
+1. `poll()` returned an empty batch. Does that mean the topic is empty? What should your loop do?
 2. A team uses default auto-commit and reports that after every crash "a few events go
    missing." Explain the mechanism and the one-line config change that fixes it.
 3. You switched to manual commit and now occasionally see an event processed twice. Is this a
@@ -355,7 +455,7 @@ docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
    order that produces at-most-once.
 5. You deployed a fix and need to reprocess yesterday's data for one partition. Which two API
    calls do you use, and how would you start "from 9 AM" instead of offset 0?
-6. Why commit offsets inside `on_revoke`? What goes wrong if you don't?
+6. Why commit offsets inside `onPartitionsRevoked`? What goes wrong if you don't?
 
 ## What's Next
 

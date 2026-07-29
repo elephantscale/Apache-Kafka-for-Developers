@@ -5,12 +5,13 @@
 - **Duration:** ~60 minutes
 - **Difficulty:** Intermediate / Advanced
 - **Kafka version:** 4.x (KRaft mode — ZooKeeper-free)
+- **Language:** Java (Kafka Java client, Maven)
 
 ## Objectives
 
 By the end of this lab you will be able to:
 
-- Use a transactional producer (`transactional.id`, `init_transactions`, begin/commit/abort)
+- Use a transactional producer (`transactional.id`, `initTransactions`, begin/commit/abort)
 - See how an aborted transaction is hidden from a `read_committed` consumer
 - Build a consume-process-produce pipeline that commits input offsets *inside* the transaction
 - Prove the pipeline is exactly-once by crashing it mid-batch and restarting
@@ -19,16 +20,67 @@ By the end of this lab you will be able to:
 ## Prerequisites
 
 - The core cluster running (`docker compose up -d`, three brokers healthy)
-- Python venv active with `confluent-kafka` (see [`labs/SETUP.md`](../SETUP.md))
+- **JDK 17** and **Maven** on the host (see the Java project setup below)
 - Labs 02–03 completed (idempotent producer; manual-commit consumer)
 
 ## Lab Environment
 
 > Developer lab against the local **Docker Compose** cluster (3 KRaft brokers, no ZooKeeper,
-> no Kubernetes). The transaction-state internal topic is replicated across all three brokers
+> no Kubernetes). Your code is a Maven project that runs on the host and connects to
+> `localhost:9092`. The transaction-state internal topic is replicated across all three brokers
 > (`transaction.state.log.replication.factor=3`, `min.isr=2`) — already configured in the
-> lab compose file, so transactions work out of the box. Your code runs on the host against
-> `localhost:9092`.
+> lab compose file, so transactions work out of the box.
+
+### Java project setup
+
+Create a project folder `lab04/` with this `pom.xml` (same pattern as the other Java labs):
+
+```xml
+<!-- lab04/pom.xml -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.elephantscale.kafka</groupId>
+  <artifactId>lab04</artifactId>
+  <version>1.0</version>
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>3.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.17.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.13</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- run a class with: mvn -q exec:java -Dexec.mainClass=... -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
+
+Put Java sources under `lab04/src/main/java/com/elephantscale/kafka/`.
 
 ### Create the lab topics
 
@@ -41,21 +93,38 @@ done
 
 Seed some input:
 
-```python
-# save as seed_input.py  — usage: python seed_input.py <count>
-import sys, json
-from confluent_kafka import Producer
-n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
-p = Producer({'bootstrap.servers': 'localhost:9092'})
-for i in range(n):
-    p.produce('lab04-input', key=f'acct-{i % 4}',
-              value=json.dumps({'id': i, 'amount': 10 + i}).encode())
-p.flush()
-print(f'seeded {n} input records')
+```java
+// save as SeedInput.java  — usage: mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
+package com.elephantscale.kafka;
+
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
+
+public class SeedInput {
+  public static void main(String[] args) {
+    int n = args.length > 0 ? Integer.parseInt(args[0]) : 20;
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      for (int i = 0; i < n; i++) {
+        String value = String.format("{\"id\": %d, \"amount\": %d}", i, 10 + i);
+        producer.send(new ProducerRecord<>("lab04-input", "acct-" + (i % 4), value));
+      }
+      producer.flush();
+    }
+    System.out.println("seeded " + n + " input records");
+  }
+}
 ```
 
 ```bash
-python seed_input.py 20
+cd lab04
+mvn -q compile
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
 ```
 
 ---
@@ -63,39 +132,50 @@ python seed_input.py 20
 ## Exercise 1 — A Transactional Producer
 
 > **What this shows:** the transactional producer lifecycle. A stable `transactional.id`
-> gives the producer a durable identity; `init_transactions()` registers it; then work is
-> wrapped in `begin_transaction()` / `commit_transaction()`. Records become visible to
+> gives the producer a durable identity; `initTransactions()` registers it; then work is
+> wrapped in `beginTransaction()` / `commitTransaction()`. Records become visible to
 > `read_committed` readers only at commit.
 
 ### 1.1 Commit a transaction
 
-```python
-# save as txn_producer.py
-import json
-from confluent_kafka import Producer
+```java
+// save as TxnProducer.java
+package com.elephantscale.kafka;
 
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'transactional.id': 'lab04-txn-producer',   # stable identity
-    # enable.idempotence is implied by transactional.id
-})
-producer.init_transactions()
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-producer.begin_transaction()
-try:
-    for i in range(5):
-        producer.produce('lab04-output',
-                          key=f'acct-{i}',
-                          value=json.dumps({'id': i, 'status': 'CONFIRMED'}).encode())
-    producer.commit_transaction()
-    print('committed 5 records in one transaction')
-except Exception as e:
-    producer.abort_transaction()
-    print(f'aborted: {e}')
+public class TxnProducer {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "lab04-txn-producer");  // stable identity
+    // enable.idempotence is implied by transactional.id
+
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      producer.initTransactions();
+      producer.beginTransaction();
+      try {
+        for (int i = 0; i < 5; i++) {
+          String value = String.format("{\"id\": %d, \"status\": \"CONFIRMED\"}", i);
+          producer.send(new ProducerRecord<>("lab04-output", "acct-" + i, value));
+        }
+        producer.commitTransaction();
+        System.out.println("committed 5 records in one transaction");
+      } catch (Exception e) {
+        producer.abortTransaction();
+        System.out.println("aborted: " + e);
+      }
+    }
+  }
+}
 ```
 
 ```bash
-python txn_producer.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.TxnProducer
 ```
 
 ### 1.2 Read them back (committed)
@@ -108,7 +188,7 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 
 All five appear — they were committed atomically.
 
-> **If a sharp student asks:** what does `init_transactions()` actually do? It registers the
+> **If a sharp student asks:** what does `initTransactions()` actually do? It registers the
 > `transactional.id` with the transaction coordinator and **fences** any earlier producer
 > instance using the same id (bumping an epoch), so a zombie predecessor can no longer commit.
 > It also recovers/aborts any in-flight transaction left by a crashed prior run.
@@ -123,32 +203,49 @@ All five appear — they were committed atomically.
 
 ### 2.1 Produce a committed batch and an aborted batch
 
-```python
-# save as txn_abort.py
-import json
-from confluent_kafka import Producer
+```java
+// save as TxnAbort.java
+package com.elephantscale.kafka;
 
-producer = Producer({'bootstrap.servers': 'localhost:9092',
-                     'transactional.id': 'lab04-abort-demo'})
-producer.init_transactions()
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
 
-# batch 1 — COMMIT
-producer.begin_transaction()
-for i in range(3):
-    producer.produce('lab04-output', value=json.dumps({'batch': 1, 'i': i}).encode())
-producer.commit_transaction()
-print('committed batch 1')
+public class TxnAbort {
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "lab04-abort-demo");
 
-# batch 2 — ABORT
-producer.begin_transaction()
-for i in range(3):
-    producer.produce('lab04-output', value=json.dumps({'batch': 2, 'i': i}).encode())
-producer.abort_transaction()
-print('aborted batch 2')
+    try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+      producer.initTransactions();
+
+      // batch 1 — COMMIT
+      producer.beginTransaction();
+      for (int i = 0; i < 3; i++) {
+        producer.send(new ProducerRecord<>("lab04-output",
+            String.format("{\"batch\": 1, \"i\": %d}", i)));
+      }
+      producer.commitTransaction();
+      System.out.println("committed batch 1");
+
+      // batch 2 — ABORT
+      producer.beginTransaction();
+      for (int i = 0; i < 3; i++) {
+        producer.send(new ProducerRecord<>("lab04-output",
+            String.format("{\"batch\": 2, \"i\": %d}", i)));
+      }
+      producer.abortTransaction();
+      System.out.println("aborted batch 2");
+    }
+  }
+}
 ```
 
 ```bash
-python txn_abort.py
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.TxnAbort
 ```
 
 ### 2.2 Compare the two isolation levels
@@ -182,62 +279,89 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 
 ### 3.1 The pipeline
 
-```python
-# save as pipeline_eos.py
-import json, sys
-from confluent_kafka import Consumer, Producer, TopicPartition
+```java
+// save as PipelineEos.java
+package com.elephantscale.kafka;
 
-crash_after = int(sys.argv[1]) if len(sys.argv) > 1 else -1   # -1 = never crash
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'lab04-eos',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': False,          # offsets committed ONLY via the transaction
-})
-consumer.subscribe(['lab04-input'])
+public class PipelineEos {
+  public static void main(String[] args) {
+    int crashAfter = args.length > 0 ? Integer.parseInt(args[0]) : -1;   // -1 = never crash
+    ObjectMapper mapper = new ObjectMapper();
 
-producer = Producer({'bootstrap.servers': 'localhost:9092',
-                     'transactional.id': 'lab04-eos-pipeline'})
-producer.init_transactions()
+    Properties cp = new Properties();
+    cp.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    cp.put(ConsumerConfig.GROUP_ID_CONFIG, "lab04-eos");
+    cp.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    cp.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);  // offsets committed ONLY via the transaction
+    cp.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    cp.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-processed = 0
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None:
-        continue
-    if msg.error():
-        continue
+    Properties pp = new Properties();
+    pp.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    pp.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    pp.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    pp.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "lab04-eos-pipeline");
 
-    producer.begin_transaction()
-    try:
-        record = json.loads(msg.value())
-        enriched = {'id': record['id'], 'amount': record['amount'], 'tax': record['amount'] * 0.1}
-        producer.produce('lab04-output', key=str(record['id']),
-                         value=json.dumps(enriched).encode())
+    Consumer<String, String> consumer = new KafkaConsumer<>(cp);
+    Producer<String, String> producer = new KafkaProducer<>(pp);
+    consumer.subscribe(List.of("lab04-input"));
+    producer.initTransactions();
 
-        # bind THIS input offset into the transaction
-        offsets = [TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1)]
-        producer.send_offsets_to_transaction(offsets, consumer.consumer_group_metadata())
+    int processed = 0;
+    while (true) {
+      ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+      for (ConsumerRecord<String, String> msg : records) {
+        producer.beginTransaction();
+        try {
+          JsonNode record = mapper.readTree(msg.value());
+          int id = record.get("id").asInt();
+          double amount = record.get("amount").asDouble();
+          String enriched = String.format("{\"id\": %d, \"amount\": %s, \"tax\": %s}",
+              id, amount, amount * 0.1);
+          producer.send(new ProducerRecord<>("lab04-output", String.valueOf(id), enriched));
 
-        # optional fault injection BEFORE commit
-        processed += 1
-        if processed == crash_after:
-            print(f'CRASH before committing record {record["id"]}')
-            import os; os._exit(1)
+          // bind THIS input offset into the transaction
+          Map<TopicPartition, OffsetAndMetadata> offsets = Map.of(
+              new TopicPartition(msg.topic(), msg.partition()),
+              new OffsetAndMetadata(msg.offset() + 1));
+          producer.sendOffsetsToTransaction(offsets, consumer.groupMetadata());
 
-        producer.commit_transaction()
-        print(f'committed id={record["id"]}  (processed={processed})')
-    except Exception as e:
-        producer.abort_transaction()
-        print(f'aborted: {e}')
+          // optional fault injection BEFORE commit
+          processed++;
+          if (processed == crashAfter) {
+            System.out.println("CRASH before committing record " + id);
+            Runtime.getRuntime().halt(1);
+          }
+
+          producer.commitTransaction();
+          System.out.println("committed id=" + id + "  (processed=" + processed + ")");
+        } catch (Exception e) {
+          producer.abortTransaction();
+          System.out.println("aborted: " + e);
+        }
+      }
+    }
+  }
+}
 ```
 
 ### 3.2 Run it clean
 
 ```bash
-python seed_input.py 20
-python pipeline_eos.py        # Ctrl-C once "committed" lines stop appearing
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos   # Ctrl-C once "committed" lines stop appearing
 ```
 
 Check the output count:
@@ -270,12 +394,12 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 # fresh consumer group so we read all 20 inputs from the start
 ```
 
-Edit `pipeline_eos.py`'s `group.id` to `lab04-eos-crash`, then:
+Edit `PipelineEos.java`'s `group.id` to `lab04-eos-crash`, then:
 
 ```bash
-python seed_input.py 20
-python pipeline_eos.py 5      # crashes right before committing the 5th record
-python pipeline_eos.py        # restart; runs to completion, Ctrl-C when idle
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos -Dexec.args="5"  # crashes right before committing the 5th record
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos                  # restart; runs to completion, Ctrl-C when idle
 ```
 
 ### 4.2 Count the output
@@ -289,7 +413,7 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 You should get **exactly 20** — not 24. The 5th record's aborted output was discarded and its
 offset never advanced, so the restart reprocessed it once. No duplicates, no loss.
 
-> **If a sharp student asks:** what if it crashes *after* `commit_transaction()` returns but
+> **If a sharp student asks:** what if it crashes *after* `commitTransaction()` returns but
 > before the next poll? Nothing is lost — the offset was committed inside the transaction, so
 > the restart simply resumes at the next record. The atomic unit is exactly "outputs + offset,"
 > which is why neither ordering of the crash produces a duplicate.
@@ -304,9 +428,9 @@ offset never advanced, so the restart reprocessed it once. No duplicates, no los
 
 Consider adding an external write to the pipeline:
 
-```python
-# INSIDE the try, alongside produce():
-#   db.insert(enriched)          # <-- NOT in the Kafka transaction!
+```java
+// INSIDE the try, alongside send():
+//   db.insert(enriched);         // <-- NOT in the Kafka transaction!
 ```
 
 Discuss before moving on:
@@ -327,7 +451,7 @@ Discuss before moving on:
 ## Review Questions
 
 1. What two things does a transaction make atomic in a consume-process-produce loop, and why
-   must the consumer have `enable.auto.commit=False`?
+   must the consumer have `enable.auto.commit=false`?
 2. What is the `transactional.id` for, and what failure does producer "fencing" prevent?
 3. A downstream team reads your transactional output but still sees duplicated/aborted records.
    What single consumer setting did they most likely miss?

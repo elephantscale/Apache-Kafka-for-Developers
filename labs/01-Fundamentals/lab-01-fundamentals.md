@@ -5,6 +5,7 @@
 - **Duration:** ~45 minutes
 - **Difficulty:** Beginner
 - **Kafka version:** 4.x (KRaft mode — ZooKeeper-free)
+- **Language:** Primarily CLI (`kafka-*.sh`); one optional Java/Maven smoke test
 
 ## Objectives
 
@@ -17,18 +18,21 @@ By the end of this lab you will be able to:
 
 ## Prerequisites
 
-- The lab environment set up per [`labs/SETUP.md`](../SETUP.md) (Docker + Compose v2, Python venv)
+- The lab environment set up per [`labs/SETUP.md`](../SETUP.md) (Docker + Compose v2; JDK 17 +
+  Maven for the optional Java smoke test in 1.2)
 - A terminal open at the repository root
 - You will need **three terminals** for the consumer-group exercise — open them now
 
 ## Lab Environment
 
-> This is a **developer** lab. The cluster is the local **Docker Compose** stack from
+> This is a **developer** lab against the local **Docker Compose** cluster from
 > `labs/SETUP.md`: three combined broker+controller nodes (`kafka-1`, `kafka-2`,
 > `kafka-3`) running **Apache Kafka 4.x in KRaft mode** — no ZooKeeper, no Kubernetes,
 > nothing to administer. The Kafka CLI tools (`kafka-*.sh`) run **inside** the broker
-> containers, so you invoke them with `docker exec kafka-1 …` and no JDK is needed on
-> your host. Every command targets `--bootstrap-server localhost:9092`.
+> containers, so you invoke them with `docker exec kafka-1 …`. This lab is almost entirely
+> CLI; the one optional host-side check in 1.2 uses the Kafka **Java** client via Maven,
+> the same toolchain the rest of the course's labs use. Every command targets
+> `--bootstrap-server localhost:9092`.
 
 ---
 
@@ -59,12 +63,41 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list
 This returns quietly (no user topics yet) — but the fact that it returns at all means
 the client connected and pulled cluster metadata.
 
-Now confirm all three brokers are visible, from the host, using Python:
+Now confirm all three brokers are visible **from the host** (not just from inside a container).
+The quickest check is a CLI call:
 
 ```bash
-source .venv/bin/activate    # if not already active
-python -c "from confluent_kafka.admin import AdminClient; \
-print(AdminClient({'bootstrap.servers':'localhost:9092'}).list_topics(timeout=5).brokers)"
+docker exec kafka-1 kafka-broker-api-versions.sh --bootstrap-server localhost:9092 \
+  | grep -c "id:"
+```
+
+That prints `3` — one line per reachable broker.
+
+*(Optional, Java)* To confirm the **host's own Java toolchain** — the one you'll use for every
+later lab — can reach the cluster, add this tiny program to the Maven project introduced in Lab 05
+(it needs only the `kafka-clients` dependency) and run it:
+
+```java
+// src/main/java/com/elephantscale/kafka/ClusterCheck.java
+package com.elephantscale.kafka;
+
+import org.apache.kafka.clients.admin.AdminClient;
+import java.util.Map;
+
+public class ClusterCheck {
+  public static void main(String[] args) throws Exception {
+    try (AdminClient admin = AdminClient.create(
+             Map.of("bootstrap.servers", "localhost:9092"))) {
+      var nodes = admin.describeCluster().nodes().get();
+      System.out.println("brokers: " + nodes);
+      System.out.println("count: " + nodes.size());
+    }
+  }
+}
+```
+
+```bash
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ClusterCheck
 ```
 
 You should see **three broker entries** (ids 1, 2, 3).
@@ -308,5 +341,5 @@ Stop the producer and all consumers (`Ctrl-C`) when done.
 ## What's Next
 
 You've driven Kafka from the command line. Next you'll do the same things **from code**:
-**Module 5 (Producer Internals)** and **Lab 02**, where you write a Python producer and
+**Module 5 (Producer Internals)** and **Lab 02**, where you write a Java producer and
 control serialization, partitioning, batching, acks, and idempotence yourself.
