@@ -19,12 +19,13 @@ A consumer is a **poll loop**. It asks the broker for records, processes them, a
 records how far it got.
 
 ```
-subscribe(['orders'])
-while running:
-    records = poll(timeout)     # fetch a batch
-    for r in records:
-        process(r)              # your business logic
-    commit()                    # remember position (offset)
+consumer.subscribe(List.of("orders"));
+while (running) {
+    records = consumer.poll(timeout);      // fetch a batch
+    for (record : records)
+        process(record);                   // your business logic
+    consumer.commitSync();                 // remember position (offset)
+}
 ```
 
 - The consumer **pulls** — the broker never pushes. You control the pace.
@@ -134,13 +135,12 @@ semantics.
 
 The default: the consumer commits offsets **automatically** on a timer.
 
-```python
-conf = {
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'billing',
-    'enable.auto.commit': True,        # default
-    'auto.commit.interval.ms': 5000,   # every 5s
-}
+```java
+Properties c = new Properties();
+c.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+c.put(ConsumerConfig.GROUP_ID_CONFIG, "billing");
+c.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);       // default
+c.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);  // every 5s
 ```
 
 - **Simple** — you never call commit yourself
@@ -156,28 +156,26 @@ conf = {
 
 Take control: turn auto-commit off and commit **after** you've processed a batch.
 
-```python
-conf = {
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'billing',
-    'enable.auto.commit': False,
-}
-consumer = Consumer(conf)
-consumer.subscribe(['orders'])
+```java
+c.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None:
-        continue
-    if msg.error():
-        handle(msg.error()); continue
-    process(msg)                 # do the work FIRST
-    consumer.commit(msg)         # THEN record progress
+try (Consumer<String, String> consumer = new KafkaConsumer<>(c)) {
+  consumer.subscribe(List.of("orders"));
+
+  while (running) {
+    ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+    for (ConsumerRecord<String, String> r : records) {
+      process(r);                  // do the work FIRST
+    }
+    consumer.commitSync();         // THEN record progress for the whole batch
+  }
+}
 ```
 
 - Commit **after** processing → a crash before commit means you **re-process**, not skip
 - This is **at-least-once**: no loss, but possible **duplicates** → make processing idempotent
-- `commit()` can be synchronous (safe, slower) or async (faster, best-effort)
+- `commitSync()` blocks and retries (safe, slower); `commitAsync()` returns immediately
+  (faster, best-effort) — a common pattern is async in the loop, sync on shutdown
 
 Notes: The ordering "process then commit" vs "commit then process" IS the difference between at-least-once and at-most-once. Draw it explicitly.
 
@@ -196,7 +194,7 @@ The same poll loop gives different guarantees depending on **when you commit**.
 - Most real consumers want **at-least-once + idempotent processing**
 - True **exactly-once** across consume→process→produce needs **transactions** — next big module
 
-**The consumer's delivery guarantee is not a setting; it's where you put `commit()`.**
+**The consumer's delivery guarantee is not a setting; it's where you put `commitSync()`.**
 
 ---
 
@@ -205,15 +203,16 @@ The same poll loop gives different guarantees depending on **when you commit**.
 Committed offsets are just the default start point — you can **seek** a consumer to any
 position and re-read.
 
-- `seek_to_beginning()` — reprocess the whole retained log
-- `seek(partition, offset)` — jump to a specific offset
-- Seek by **timestamp** — "give me everything since 09:00" (offsets-for-times)
+- `seekToBeginning(partitions)` — reprocess the whole retained log
+- `seek(topicPartition, offset)` — jump to a specific offset
+- `offsetsForTimes(...)` — seek by **timestamp**: "give me everything since 09:00"
 - `auto.offset.reset` (`earliest` / `latest`) — what a **brand-new** group does with no commits
 
-```python
-# replay a partition from the start
-from confluent_kafka import TopicPartition
-consumer.assign([TopicPartition('orders', 0, 0)])   # partition 0, offset 0
+```java
+// replay partition 0 from the start
+TopicPartition tp = new TopicPartition("orders", 0);
+consumer.assign(List.of(tp));        // manual assignment — no group, no rebalance
+consumer.seekToBeginning(List.of(tp));
 ```
 
 Notes: Replay is a superpower unique to log-based systems. Reprocess after a bug fix, backfill a new downstream, rebuild state — all just "seek and read again."
@@ -225,20 +224,27 @@ Notes: Replay is a superpower unique to log-based systems. Reprocess after a bug
 When partitions are taken from or given to your consumer, you often need to **do something**
 — commit final offsets, flush buffers, load state. That's the **rebalance listener**.
 
-```python
-def on_assign(consumer, partitions):
-    print(f'assigned: {[p.partition for p in partitions]}')
+```java
+consumer.subscribe(List.of("orders"), new ConsumerRebalanceListener() {
 
-def on_revoke(consumer, partitions):
-    consumer.commit(asynchronous=False)     # commit before losing the partitions
-    print(f'revoked: {[p.partition for p in partitions]}')
+  @Override
+  public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+    consumer.commitSync();                  // commit BEFORE losing the partitions
+    System.out.println("revoked: " + partitions);
+  }
 
-consumer.subscribe(['orders'], on_assign=on_assign, on_revoke=on_revoke)
+  @Override
+  public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+    System.out.println("assigned: " + partitions);
+  }
+});
 ```
 
-- `on_revoke` fires **before** you lose partitions → your chance to commit/clean up
-- `on_assign` fires when you gain partitions → seed state, log the assignment
-- Committing in `on_revoke` is how you avoid re-processing a big chunk after every rebalance
+- `onPartitionsRevoked` fires **before** you lose partitions → your chance to commit/clean up
+- `onPartitionsAssigned` fires when you gain partitions → seed state, log the assignment
+- Committing on revoke is how you avoid re-processing a big chunk after every rebalance
+
+Notes: There is a third callback, `onPartitionsLost`, for when partitions are taken away *without* a clean revoke (the consumer was already fenced out). Don't commit there — you no longer own them. The default implementation just calls `onPartitionsRevoked`, which is usually wrong.
 
 ---
 
@@ -248,11 +254,13 @@ A checklist for consumers that survive real production:
 
 - **Manual commit after processing** — control your delivery semantics
 - **Idempotent processing** — because at-least-once means occasional duplicates
-- **Commit in `on_revoke`** — don't lose progress across rebalances
+- **Commit in `onPartitionsRevoked`** — don't lose progress across rebalances
 - **Keep `poll()` frequent** — long processing between polls looks like a dead consumer;
-  tune `max.poll.interval.ms` or process smaller batches
-- **Handle `msg.error()`** every loop — not every poll returns data
-- **Close cleanly** — `consumer.close()` triggers a graceful leave (faster rebalance)
+  tune `max.poll.interval.ms` or lower `max.poll.records` to shrink the batch
+- **Expect empty polls and exceptions** — `poll()` often returns zero records; deserialization
+  and auth failures arrive as **thrown exceptions**, so wrap the loop
+- **Close cleanly** — `consumer.close()` (or try-with-resources) triggers a graceful leave,
+  so the group rebalances immediately instead of waiting out the session timeout
 
 Notes: This checklist is basically Lab 03. Each item maps to an exercise or a "what this shows" callout.
 
@@ -264,5 +272,5 @@ Notes: This checklist is basically Lab 03. Each item maps to an exercise or a "w
 - **KIP-848** makes rebalances incremental and broker-coordinated — smoother, same code for you
 - **Offsets** live in `__consumer_offsets`; a consumer resumes from the last committed offset
 - **Auto-commit** (timer) risks loss; **manual commit after processing** gives at-least-once
-- Delivery semantics = **where you put `commit()`**; exactly-once needs transactions (Module 7)
+- Delivery semantics = **where you put `commitSync()`**; exactly-once needs transactions (Module 7)
 - **Seek** enables replay; **rebalance listeners** + a resilience checklist make consumers robust

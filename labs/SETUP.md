@@ -15,15 +15,15 @@ code against it.
   `connect` (Kafka Connect + Postgres + MinIO), `flink` (Flink SQL), and
   `monitoring` (Prometheus + Grafana).
 - The Kafka CLI tools (`kafka-*.sh`) run **inside** the broker containers via
-  `docker exec kafka-1 …`, so **no host JDK is required**. Your code runs on the
-  host in Python.
+  `docker exec kafka-1 …`, so you never install Kafka itself. Your own code runs on
+  the host in Java, so you **do** need a JDK and Maven.
 
 ### How clients connect
 
 | From | Bootstrap server |
 |------|------------------|
 | Inside a container (`docker exec kafka-1 …`) | `localhost:9092` |
-| Your Python code on the host | `localhost:9092` (also `9093`, `9094` reach the other brokers) |
+| Your Java code on the host | `localhost:9092` (also `9093`, `9094` reach the other brokers) |
 
 Any one of these bootstrap addresses is enough — the client discovers the rest of
 the cluster from broker metadata.
@@ -33,7 +33,7 @@ the cluster from broker metadata.
 - Linux (Ubuntu) or macOS with **Docker** and the **Docker Compose v2** plugin
 - **JDK 17** and **Maven 3.9+** — the labs are Java
 - 8+ GB RAM (12 GB recommended; the three brokers are heap-capped to fit a small VM)
-- *(Optional)* Python 3.9+ — only for the Python reference versions of the early labs
+- An IDE is optional but recommended — see *Using an IDE* below
 
 > Provisioning VMs for a class? See **[`VM-SPEC.md`](VM-SPEC.md)** for the full VM
 > specification (sizing, pre-installed software, and offline/filtered-network image prep).
@@ -41,7 +41,7 @@ the cluster from broker metadata.
 ## Install Docker (one-time, per machine)
 
 If Docker and the Compose **v2** plugin are already installed
-(`docker compose version` prints `v2.x`), skip to *Python environment*.
+(`docker compose version` prints `v2.x`), skip to *Java build environment*.
 
 > Do **not** use `apt install docker.io` — the distro package is often too old and
 > may not include the `docker compose` **v2** plugin the labs require.
@@ -123,17 +123,28 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SomeClass
 > the Confluent repo). If you are on a restricted network, see
 > [`VM-SPEC.md`](VM-SPEC.md) for pre-caching the Maven repository.
 
-### Python (optional)
+### Using an IDE
 
-A few early labs also ship an optional **Python** reference version. Only if you use those:
+The labs are written so that **Maven on the command line is always enough** — every lab
+gives you the exact `mvn` commands, and nothing depends on an IDE. But because each lab
+is an ordinary Maven project, any Java IDE will open one directly:
 
-```bash
-cd <repo root>
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install "confluent-kafka[avro,schemaregistry]" requests
-```
+- **IntelliJ IDEA** (Community Edition is fine — no Ultimate features are used):
+  *File → Open →* select the lab's `pom.xml` → **Open as Project**. IntelliJ imports the
+  dependencies itself; you don't need to run `mvn` first.
+  Run a class with the green ▶ gutter arrow next to `main`. To pass the arguments some
+  labs use, edit the run configuration and set *Program arguments* — the IDE equivalent of
+  `-Dexec.args="..."`.
+- **VS Code** with the *Extension Pack for Java*, or **Eclipse** (*Import → Existing Maven
+  Projects*), work the same way.
+
+Two things an IDE genuinely helps with in this course: **stepping through a consumer poll
+loop in the debugger** (Lab 03) and **breakpointing inside a transaction** to watch what a
+`read_committed` reader can and cannot see (Lab 04).
+
+> Set the project SDK to **JDK 17** if the IDE offers a choice. If you keep several labs
+> open at once, open each `labNN/pom.xml` as its own project (or add them as Maven modules)
+> — they are independent projects, not one reactor build.
 
 ## Bring Up the Core Cluster
 

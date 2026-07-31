@@ -58,7 +58,7 @@ Create a project folder `lab02/` with this `pom.xml`, and put sources under
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <version>3.9.0</version>
+      <version>4.0.2</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>

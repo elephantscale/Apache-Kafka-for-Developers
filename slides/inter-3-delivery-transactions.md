@@ -71,11 +71,11 @@ A transaction groups **multiple produces across partitions** *and* the **consume
 commit** into one all-or-nothing operation.
 
 ```
-begin_transaction()
-  produce(enriched-1)      ┐
-  produce(enriched-2)      ├─ all visible together, or not at all
-  send_offsets_to_transaction(read offsets)  ┘
-commit_transaction()        # ← atomic: outputs + offsets commit together
+beginTransaction()
+  send(enriched-1)         ┐
+  send(enriched-2)         ├─ all visible together, or not at all
+  sendOffsetsToTransaction(read offsets)  ┘
+commitTransaction()        // <- atomic: outputs + offsets commit together
 ```
 
 - Either **everything commits** (outputs appear, offset advances) or **everything aborts**
@@ -90,13 +90,14 @@ commit_transaction()        # ← atomic: outputs + offsets commit together
 Transactions need a stable **`transactional.id`** — the producer's durable identity across
 restarts.
 
-```python
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'transactional.id': 'orders-enricher-1',   # stable across restarts
-    'enable.idempotence': True,                 # implied by transactional.id
-})
-producer.init_transactions()                    # once, at startup
+```java
+Properties p = new Properties();
+p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+p.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "orders-enricher-1");  // stable across restarts
+p.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);               // implied by transactional.id
+
+Producer<String, String> producer = new KafkaProducer<>(p);
+producer.initTransactions();                                         // once, at startup
 ```
 
 - It lets Kafka **fence** a previous (possibly zombie) instance with the same id — the old one
@@ -112,27 +113,35 @@ failure — a process that froze, was replaced, then woke up. The zombie can't c
 
 The canonical exactly-once pattern, end to end:
 
-```python
-producer.init_transactions()
+```java
+producer.initTransactions();
 
-while True:
-    msgs = consume_batch()
-    producer.begin_transaction()
-    try:
-        for m in msgs:
-            result = process(m)
-            producer.produce('output', value=result)
-        # bind the INPUT offsets to THIS transaction
-        producer.send_offsets_to_transaction(
-            offsets_of(msgs), consumer.consumer_group_metadata())
-        producer.commit_transaction()
-    except Exception:
-        producer.abort_transaction()            # nothing leaks; safe to retry
+while (running) {
+  ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
+  if (records.isEmpty()) continue;
+
+  producer.beginTransaction();
+  try {
+    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+    for (ConsumerRecord<String, String> r : records) {
+      producer.send(new ProducerRecord<>("output", r.key(), process(r)));
+      offsets.put(new TopicPartition(r.topic(), r.partition()),
+                  new OffsetAndMetadata(r.offset() + 1));   // the NEXT offset to read
+    }
+    // bind the INPUT offsets to THIS transaction
+    producer.sendOffsetsToTransaction(offsets, consumer.groupMetadata());
+    producer.commitTransaction();
+  } catch (KafkaException e) {
+    producer.abortTransaction();                // nothing leaks; safe to retry
+  }
+}
 ```
 
-- The consumer runs with **`enable.auto.commit=False`** — offsets are committed **only via the
+- The consumer runs with **`enable.auto.commit=false`** — offsets are committed **only via the
   transaction**
 - Output records and the input-offset advance are now **one atomic fact**
+
+Notes: Two details students get wrong. (1) It's `r.offset() + 1` — you commit the *next* offset to read, not the last one processed; committing `r.offset()` re-delivers the last record forever. (2) Not every exception should be aborted: `ProducerFencedException`, `OutOfOrderSequenceException`, and authorization errors are **fatal** — a newer instance has taken your `transactional.id`, so you must `close()` the producer and exit, not abort and retry.
 
 ---
 
@@ -141,12 +150,11 @@ while True:
 Transactions on the write side only deliver exactly-once if the **reader** agrees to ignore
 uncommitted/aborted data.
 
-```python
-consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
-    'group.id': 'downstream',
-    'isolation.level': 'read_committed',    # default is read_uncommitted
-})
+```java
+Properties c = new Properties();
+c.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+c.put(ConsumerConfig.GROUP_ID_CONFIG, "downstream");
+c.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");  // default is read_uncommitted
 ```
 
 | `isolation.level` | Sees |

@@ -31,7 +31,7 @@ Notes: Four days end to end, deliverable as one track or as two standalone cours
 
  * Practical programming experience
 
-     - Python examples throughout (Java where it helps)
+     - Java examples throughout — the Kafka Java client, built with Maven
 
  * Comfort with the **Linux command line** and a text editor
 

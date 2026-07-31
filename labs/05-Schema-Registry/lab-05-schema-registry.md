@@ -67,17 +67,17 @@ Create a project folder `lab05/` with this `pom.xml`:
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <version>3.9.0</version>
+      <version>4.0.2</version>
     </dependency>
     <dependency>
       <groupId>io.confluent</groupId>
       <artifactId>kafka-avro-serializer</artifactId>
-      <version>7.7.0</version>
+      <version>8.0.6</version>
     </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
-      <version>1.11.3</version>
+      <version>1.12.0</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>

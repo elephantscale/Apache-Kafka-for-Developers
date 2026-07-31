@@ -14,7 +14,7 @@
 #
 # Result:
 #   docker exec kafka-1 ... --bootstrap-server localhost:9092   -> works for all brokers
-#   host client (Python, nc) ... localhost:9092 / 9093 / 9094    -> works for all brokers
+#   host client (Java, nc) ..... localhost:9092 / 9093 / 9094    -> works for all brokers
 
 x-kafka-common: &kafka-common
   image: apache/kafka:4.0.0
