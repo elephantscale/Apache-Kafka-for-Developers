@@ -293,18 +293,18 @@ and exactly why processing must be idempotent.
 > anywhere in the retained log and re-read — the basis of replay, backfill, and
 > reprocess-after-bugfix.
 
-### 4.1 Replay a partition from the beginning
+### 4.1 Replay the topic from the beginning
 
 ```java
 // save as ConsumerReplay.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import java.time.Duration;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class ConsumerReplay {
   public static void main(String[] args) {
@@ -315,21 +315,32 @@ public class ConsumerReplay {
     p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-    TopicPartition tp = new TopicPartition("lab03-events", 0);
+    Map<Integer, Integer> perPartition = new TreeMap<>();
     int n = 0;
     try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(p)) {
-      consumer.assign(List.of(tp));              // assign partition 0 explicitly
-      consumer.seekToBeginning(List.of(tp));     // rewind to offset 0, ignore any commits
-      while (true) {
+      // ask the cluster which partitions this topic has, and replay ALL of them --
+      // don't assume a given key landed on any particular partition
+      List<TopicPartition> all = new ArrayList<>();
+      for (PartitionInfo info : consumer.partitionsFor("lab03-events")) {
+        all.add(new TopicPartition(info.topic(), info.partition()));
+      }
+
+      consumer.assign(all);              // manual assignment: no group, no rebalance
+      consumer.seekToBeginning(all);     // rewind to offset 0, ignore any commits
+
+      int emptyPolls = 0;
+      while (emptyPolls < 3) {           // first poll can be empty while we connect
         ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
-        if (records.isEmpty()) break;            // drained
+        if (records.isEmpty()) { emptyPolls++; continue; }
+        emptyPolls = 0;
         for (ConsumerRecord<String, String> r : records) {
           n++;
-          System.out.printf("replayed P0 @ %d  %s%n", r.offset(), r.value());
+          perPartition.merge(r.partition(), 1, Integer::sum);
+          System.out.printf("replayed P%d @ %d  %s%n", r.partition(), r.offset(), r.value());
         }
       }
     }
-    System.out.println("replayed " + n + " records from partition 0");
+    System.out.println("replayed " + n + " records; per partition: " + perPartition);
   }
 }
 ```
@@ -338,7 +349,14 @@ public class ConsumerReplay {
 mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerReplay
 ```
 
-It re-reads partition 0 from offset 0, regardless of what any group committed.
+It re-reads **every** partition from offset 0, regardless of what any group committed — so the
+count matches everything `Feed` has produced so far.
+
+> **Why replay all partitions, not just partition 0?** Because `Feed` keys its records
+> (`user-0`…`user-4`), and Kafka hashes those keys onto partitions. With 3 partitions those five
+> keys happen to land on only **two** of them — partition 0 stays empty. Hardcoding partition 0
+> would replay nothing and look like a broken program. Keys decide placement; never assume a
+> particular partition has data. `partitionsFor()` asks the cluster instead of guessing.
 
 > **If a sharp student asks:** how would I replay "everything since 9 AM"? Use
 > `consumer.offsetsForTimes(...)` to convert a timestamp to the first offset at/after it, then

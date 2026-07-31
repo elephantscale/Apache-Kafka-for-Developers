@@ -35,7 +35,9 @@ Specification for the training VMs that run the course labs. Share this with the
 - **JDK 17** (e.g. Temurin/OpenJDK 17) — the labs are Java
 - **Apache Maven 3.9+** (`mvn`)
 - **git**, **curl**, **jq**, **netcat (nc)**
-- *(Optional)* Python 3.9+ — only if the Python reference versions of early labs are used
+- *(Recommended)* a Java IDE — **IntelliJ IDEA Community Edition** is the safe default
+  (Maven import works out of the box; no license needed). VS Code with the Extension Pack
+  for Java or Eclipse are equally fine.
 
 ## Network / Internet Access
 
@@ -74,9 +76,9 @@ danielqsj/kafka-exporter:latest
 Building the lab Maven project once populates `~/.m2` with, among others:
 
 ```
-org.apache.kafka:kafka-clients:3.9.0
-io.confluent:kafka-avro-serializer:7.7.0        # from packages.confluent.io
-org.apache.avro:avro:1.11.3
+org.apache.kafka:kafka-clients:4.0.2
+io.confluent:kafka-avro-serializer:8.0.6        # from packages.confluent.io
+org.apache.avro:avro:1.12.0
 org.slf4j:slf4j-simple:2.0.13
 org.codehaus.mojo:exec-maven-plugin:3.1.0
 ```

@@ -53,7 +53,7 @@ Create a project folder `lab04/` with this `pom.xml` (same pattern as the other 
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <version>3.9.0</version>
+      <version>4.0.2</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>

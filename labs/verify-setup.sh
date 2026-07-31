@@ -85,13 +85,22 @@ else bad "java not installed — need JDK 17 (e.g. Temurin/OpenJDK 17)"; fi
 if have mvn; then ok "maven present — $(mvn -v 2>/dev/null | head -1)"
 else bad "maven not installed — need Apache Maven 3.9+ (mvn)"; fi
 
-# --- 3b. Python (optional — only for the legacy Python reference labs) ------
-head "3b. Python (optional)"
-if have python3; then
-  pv=$(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null)
-  python3 -c 'import sys;exit(0 if sys.version_info[:2]>=(3,9) else 1)' 2>/dev/null \
-    && ok "python3 $pv (>= 3.9)" || warn "python3 $pv — 3.9+ if using the Python reference labs"
-else warn "python3 not installed — optional, only for the Python reference labs"; fi
+# --- 3b. Maven can actually fetch the Kafka client --------------------------
+# The commonest classroom failure is not a missing JDK but a filtered network:
+# Maven Central (and, for Lab 05, the Confluent repo) unreachable from the VM.
+head "3b. Maven dependency resolution"
+if [ "$FULL" = 1 ] && have mvn; then
+  if mvn -q -B dependency:get -Dartifact=org.apache.kafka:kafka-clients:4.0.2 >/dev/null 2>&1; then
+    ok "kafka-clients:4.0.2 resolves from Maven Central"
+  else bad "cannot resolve kafka-clients from Maven Central — check proxy/egress (see VM-SPEC.md)"; fi
+
+  if mvn -q -B dependency:get -Dartifact=io.confluent:kafka-avro-serializer:8.0.6 \
+       -DremoteRepositories=confluent::::https://packages.confluent.io/maven/ >/dev/null 2>&1; then
+    ok "kafka-avro-serializer:8.0.6 resolves from the Confluent repo (Lab 05)"
+  else warn "Confluent repo unreachable — Lab 05 (Schema Registry) will fail to build"; fi
+else
+  warn "skipped dependency resolution — run './verify-setup.sh --full' to test Maven egress"
+fi
 
 # --- 4. Repository ----------------------------------------------------------
 head "4. Course repository"
@@ -125,11 +134,9 @@ if cluster_up; then
     ok "kafka-topics.sh --list works inside kafka-1"
   else bad "kafka-topics.sh failed inside kafka-1"; fi
 
-  # broker count from Python (the SETUP.md smoke test)
-  if python3 -c 'import confluent_kafka' 2>/dev/null; then
-    n=$(python3 -c "from confluent_kafka.admin import AdminClient; print(len(AdminClient({'bootstrap.servers':'localhost:9092'}).list_topics(timeout=8).brokers))" 2>/dev/null)
-    [ "${n:-0}" = "3" ] && ok "Python AdminClient sees 3 brokers" || bad "Python AdminClient saw ${n:-0} brokers (expected 3)"
-  else warn "skipped Python broker check (confluent-kafka not installed)"; fi
+  # broker count (the SETUP.md smoke test)
+  n=$(docker exec kafka-1 kafka-broker-api-versions.sh --bootstrap-server localhost:9092 2>/dev/null | grep -c "id:")
+  [ "${n:-0}" = "3" ] && ok "cluster reports 3 brokers" || bad "cluster reports ${n:-0} brokers (expected 3)"
 
   # end-to-end produce/consume round trip
   T="verify-$$"

@@ -123,7 +123,7 @@ Three roles make up the system:
   └────────┘        └──────────┴──────────┴──────────┘   └────────┘
 ```
 
-Producers and consumers are **your code** (Python in this course). Brokers are the
+Producers and consumers are **your code** (Java in this course). Brokers are the
 Kafka cluster — for us, three Docker containers.
 
 ---

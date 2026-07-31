@@ -15,12 +15,12 @@ Elephant Scale
 
 ## What a Producer Actually Does
 
-`producer.produce(...)` looks instant, but a lot happens between your call and a
+`producer.send(...)` looks instant, but a lot happens between your call and a
 durable record on a broker.
 
 ```
 your code
-  │  produce(topic, key, value)
+  │  send(new ProducerRecord<>(topic, key, value))
   ▼
 serialize key & value  →  bytes
   ▼
@@ -48,21 +48,21 @@ Kafka stores **bytes**. Your keys and values must be turned into bytes on the wa
 - Common choices: strings, JSON, and — with the Schema Registry — **Avro / Protobuf** (Module 8)
 - Consumers must use a **matching deserializer**, or they read garbage
 
-```python
-from confluent_kafka import Producer
-import json
+```java
+Properties p = new Properties();
+p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,   StringSerializer.class.getName());
+p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-producer = Producer({'bootstrap.servers': 'localhost:9092'})
-
-producer.produce(
-    topic='orders',
-    key='user-1',                              # str -> bytes (utf-8)
-    value=json.dumps({'id': 1, 'amt': 9.99}).encode('utf-8'),
-)
-producer.flush()
+try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+  producer.send(new ProducerRecord<>(
+      "orders",
+      "user-1",                            // key   -> bytes (UTF-8)
+      "{\"id\": 1, \"amt\": 9.99}"));      // value -> bytes (UTF-8)
+}   // close() flushes first
 ```
 
-Notes: In `confluent-kafka` you typically hand it `bytes` (or `str`, which it encodes as UTF-8). JSON here is just "dict -> string -> bytes." Module 8 replaces this hand-rolled JSON with schema-backed serializers.
+Notes: In the Java client the serializer is *configuration*, not something you call — `StringSerializer` turns each String into UTF-8 bytes on the way out. The JSON here is a hand-built string; Module 8 replaces it with schema-backed Avro serdes. Note the type parameters `<String, String>` must match the configured serializers.
 
 ---
 
@@ -134,13 +134,10 @@ Kafka compresses the whole batch, not record-by-record.
 - Compression pairs with batching: **bigger batches compress better**
 - The broker stores it compressed; the consumer decompresses — end to end
 
-```python
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'linger.ms': 10,
-    'batch.size': 65536,
-    'compression.type': 'zstd',
-})
+```java
+p.put(ProducerConfig.LINGER_MS_CONFIG,        10);
+p.put(ProducerConfig.BATCH_SIZE_CONFIG,       65536);
+p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
 ```
 
 Notes: Compression reduces network, disk, *and* replication traffic. On JSON especially the ratio is large. It costs producer CPU, but zstd/lz4 make that cheap.
@@ -217,12 +214,9 @@ This is exactly what the **idempotent producer** fixes.
 Turn on idempotence and the broker will **de-duplicate** the producer's retries
 automatically.
 
-```python
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'enable.idempotence': True,     # exactly-once *at the producer*
-    'acks': 'all',                  # required; set implicitly
-})
+```java
+p.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);   // exactly-once *at the producer*
+p.put(ProducerConfig.ACKS_CONFIG, "all");                // required; implied by idempotence
 ```
 
 How it works, briefly:
@@ -232,7 +226,10 @@ How it works, briefly:
 - A **retried** record has the same sequence → the broker **discards the duplicate**
 
 Result: **exactly-once delivery from producer to broker**, even across retries. Cheap
-enough to be a default.
+enough to be a default — and since Kafka 3.0 it **is** the default (`enable.idempotence=true`),
+so on Kafka 4 you get it unless you turn it off.
+
+Notes: Worth stating plainly — most students assume they must opt in. On Kafka 4 the trap is the reverse: setting `acks=1` or `max.in.flight > 5` *silently conflicts* with idempotence and the client will refuse to start (or, in older versions, quietly disable it).
 
 ---
 
@@ -242,7 +239,7 @@ Be precise about the guarantee — it's a common interview and production trap.
 
 - ✅ De-dupes **this producer's retries** to a partition → no duplicates from resend
 - ✅ Preserves **ordering** even with retries and multiple in-flight batches
-- ❌ Does **not** de-dupe if *your application* calls `produce()` twice for the same event
+- ❌ Does **not** de-dupe if *your application* calls `send()` twice for the same event
 - ❌ Does **not** span **multiple partitions or a consume-process-produce loop** — that needs
   **transactions** (Module 7 / Delivery Semantics)
 
@@ -257,31 +254,27 @@ Notes: Draw the boundary clearly. Idempotence is a producer-local guarantee. End
 
 Putting the pipeline together — a sensible production baseline:
 
-```python
-from confluent_kafka import Producer
-import json
+```java
+Properties p = new Properties();
+p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,   StringSerializer.class.getName());
+p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+p.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);   // no duplicate retries, order preserved
+p.put(ProducerConfig.ACKS_CONFIG, "all");                // durable once acknowledged
+p.put(ProducerConfig.LINGER_MS_CONFIG, 10);              // batch a little for throughput
+p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");   // cheap, strong compression
 
-producer = Producer({
-    'bootstrap.servers': 'localhost:9092',
-    'enable.idempotence': True,     # no duplicate retries, order preserved
-    'acks': 'all',                  # durable once acknowledged
-    'linger.ms': 10,                # batch a little for throughput
-    'compression.type': 'zstd',     # cheap, strong compression
-})
-
-def delivery_report(err, msg):
-    if err:
-        print(f'FAILED: {err}')
-    else:
-        print(f'ok → {msg.topic()}[{msg.partition()}]@{msg.offset()}')
-
-producer.produce('orders', key='user-1',
-                 value=json.dumps({'id': 1}).encode(),
-                 callback=delivery_report)
-producer.flush()      # block until outstanding deliveries complete
+try (Producer<String, String> producer = new KafkaProducer<>(p)) {
+  producer.send(new ProducerRecord<>("orders", "user-1", "{\"id\": 1}"),
+    (RecordMetadata md, Exception err) -> {          // the delivery callback
+      if (err != null) System.out.println("FAILED: " + err);
+      else System.out.printf("ok -> %s[%d]@%d%n", md.topic(), md.partition(), md.offset());
+    });
+  producer.flush();     // block until outstanding deliveries complete
+}
 ```
 
-Notes: `flush()` is essential in short scripts — without it the process can exit before the async sender delivers. The `delivery_report` callback is how you learn the final partition/offset or the error.
+Notes: The callback is how you learn the final partition/offset — or the error. `send()` also returns a `Future<RecordMetadata>`; calling `.get()` on it makes the send synchronous, which is simple but kills throughput. Prefer the callback. `flush()` blocks until everything in flight is delivered; try-with-resources `close()` flushes too, so the explicit `flush()` here is belt-and-braces (and the place to check for errors before exiting).
 
 ---
 
