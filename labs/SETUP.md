@@ -119,6 +119,11 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SomeClass
 # pass program args with -Dexec.args="..."
 ```
 
+> **Prefer reading Python?** [`APPENDIX-python-reference.md`](APPENDIX-python-reference.md)
+> has every producer/consumer/transaction example in the `confluent-kafka` Python client.
+> It is optional — the labs themselves are Java — but the Kafka concepts and configs are
+> identical in both.
+
 > The first `mvn` build downloads dependencies from Maven Central (and, for Lab 05,
 > the Confluent repo). If you are on a restricted network, see
 > [`VM-SPEC.md`](VM-SPEC.md) for pre-caching the Maven repository.
