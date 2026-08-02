@@ -31,7 +31,7 @@ PASS=0; FAIL=0; WARN=0
 ok()   { printf "  ${G}PASS${N}  %s\n" "$1"; PASS=$((PASS+1)); }
 bad()  { printf "  ${R}FAIL${N}  %s\n" "$1"; FAIL=$((FAIL+1)); }
 warn() { printf "  ${Y}WARN${N}  %s\n" "$1"; WARN=$((WARN+1)); }
-head() { printf "\n${B}%s${N}\n" "$1"; }
+section() { printf "\n${B}%s${N}\n" "$1"; }   # NOT named `head` -- that would shadow coreutils head
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # --- locate the repo (so `docker compose` finds docker-compose.yml) ---------
@@ -43,7 +43,7 @@ printf "${B}Apache Kafka for Developers — VM readiness check${N}\n"
 printf "host: %s   user: %s   date: %s\n" "$(hostname)" "$(id -un)" "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null)"
 
 # --- 1. Operating system & resources ---------------------------------------
-head "1. Operating system & resources"
+section "1. Operating system & resources"
 if [ "$(uname -s)" = "Linux" ]; then ok "OS is Linux ($(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-unknown}"))"
 else warn "OS is $(uname -s) — course targets Linux/macOS"; fi
 
@@ -57,7 +57,7 @@ disk_gb=$(df -Pk "$REPO" 2>/dev/null | awk 'NR==2{printf "%.1f", $4/1024/1024}')
   && ok "Free disk ${disk_gb} GB on repo volume" || warn "Free disk ${disk_gb} GB — images need a few GB"; }
 
 # --- 2. Docker engine & Compose v2 -----------------------------------------
-head "2. Docker engine & Compose v2"
+section "2. Docker engine & Compose v2"
 if have docker; then ok "docker present — $(docker --version 2>/dev/null)"
 else bad "docker not installed — see labs/SETUP.md 'Install Docker'"; fi
 
@@ -77,7 +77,7 @@ if have docker && docker info >/dev/null 2>&1; then
 fi
 
 # --- 3. Java build environment (the labs are Java) --------------------------
-head "3. Java build environment"
+section "3. Java build environment"
 if have java; then
   # First line of `java -version` (stderr) is e.g.  openjdk version "17.0.19" 2026-04-21
   # or  openjdk 17.0.19 ...  — grab the first dotted version token, then its major.
@@ -98,7 +98,7 @@ else bad "maven not installed — need Apache Maven 3.9+ (mvn)"; fi
 # --- 3b. Maven can actually fetch the Kafka client --------------------------
 # The commonest classroom failure is not a missing JDK but a filtered network:
 # Maven Central (and, for Lab 05, the Confluent repo) unreachable from the VM.
-head "3b. Maven dependency resolution"
+section "3b. Maven dependency resolution"
 if [ "$FULL" = 1 ] && have mvn; then
   if mvn -q -B dependency:get -Dartifact=org.apache.kafka:kafka-clients:4.0.2 >/dev/null 2>&1; then
     ok "kafka-clients:4.0.2 resolves from Maven Central"
@@ -113,7 +113,7 @@ else
 fi
 
 # --- 4. Repository ----------------------------------------------------------
-head "4. Course repository"
+section "4. Course repository"
 if [ -f "$REPO/docker-compose.yml" ]; then ok "docker-compose.yml found at $REPO"
 else bad "docker-compose.yml not found — clone/checkout the course repo"; fi
 
@@ -122,7 +122,7 @@ cluster_up() { have docker && [ -n "$(docker ps --filter 'name=kafka-1' --filter
 
 # --- 5. Bring up the cluster (only with --full) -----------------------------
 if [ "$FULL" = 1 ] && [ -f "$REPO/docker-compose.yml" ] && docker info >/dev/null 2>&1; then
-  head "5. Starting the core cluster (--full)"
+  section "5. Starting the core cluster (--full)"
   ( cd "$REPO" && docker compose up -d ) && ok "docker compose up -d issued" || bad "docker compose up -d failed"
   printf "  ...waiting up to 120s for kafka-1/2/3 to become healthy"
   for i in $(seq 1 24); do
@@ -134,7 +134,7 @@ if [ "$FULL" = 1 ] && [ -f "$REPO/docker-compose.yml" ] && docker info >/dev/nul
 fi
 
 # --- 6. Cluster smoke test (if running) ------------------------------------
-head "6. Cluster smoke test"
+section "6. Cluster smoke test"
 if cluster_up; then
   # host reachability
   if have nc; then nc -z localhost 9092 2>/dev/null && ok "broker port localhost:9092 reachable" || bad "localhost:9092 not reachable"; fi
@@ -168,11 +168,11 @@ fi
 
 # --- optional teardown ------------------------------------------------------
 if [ "$DOWN" = 1 ] && [ -f "$REPO/docker-compose.yml" ]; then
-  head "Teardown (--down)"; ( cd "$REPO" && docker compose down ) && ok "docker compose down" || warn "teardown reported an issue"
+  section "Teardown (--down)"; ( cd "$REPO" && docker compose down ) && ok "docker compose down" || warn "teardown reported an issue"
 fi
 
 # --- summary ----------------------------------------------------------------
-head "Summary"
+section "Summary"
 printf "  ${G}%d passed${N}, ${Y}%d warnings${N}, ${R}%d failed${N}\n" "$PASS" "$WARN" "$FAIL"
 if [ "$FAIL" -eq 0 ]; then
   printf "  ${G}${B}VM looks ready for the Apache Kafka for Developers labs.${N}\n"; exit 0
