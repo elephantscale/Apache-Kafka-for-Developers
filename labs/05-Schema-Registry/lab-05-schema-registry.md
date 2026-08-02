@@ -40,74 +40,32 @@ By the end of this lab you will be able to:
 
 ### Java project setup
 
-Create a project folder `lab05/` with this `pom.xml`:
+All the Java in this course lives in **one ready-made Maven project** that ships with the
+repo — you don't create a project, a `pom.xml`, or any directories:
 
-```xml
-<!-- lab05/pom.xml -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.elephantscale.kafka</groupId>
-  <artifactId>lab05</artifactId>
-  <version>1.0</version>
-  <properties>
-    <maven.compiler.release>17</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <repositories>
-    <repository>
-      <id>confluent</id>
-      <url>https://packages.confluent.io/maven/</url>
-    </repository>
-  </repositories>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-clients</artifactId>
-      <version>4.0.2</version>
-    </dependency>
-    <dependency>
-      <groupId>io.confluent</groupId>
-      <artifactId>kafka-avro-serializer</artifactId>
-      <version>8.0.6</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.avro</groupId>
-      <artifactId>avro</artifactId>
-      <version>1.12.0</version>
-    </dependency>
-    <!-- kafka-clients pulls slf4j-api 1.7.36 transitively; pin the 2.x API so it
-         matches the 2.x binding below. Mismatched, SLF4J prints a StaticLoggerBinder
-         warning on every run and silently disables all client logging. -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <!-- run a class with: mvn -q exec:java -Dexec.mainClass=... -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
-      </plugin>
-    </plugins>
-  </build>
-</project>
+```bash
+cd labs/kafka-labs
 ```
 
-Put Java sources under `lab05/src/main/java/com/elephantscale/kafka/`.
+Save each lab class as `src/main/java/com/elephantscale/kafka/<ClassName>.java` (the file name
+must match the class name, and the first line is `package com.elephantscale.kafka;`), then run
+it with the helper:
+
+```bash
+./run.sh ProducerBasic        # no arguments
+./run.sh Feed 100             # with arguments
+./run.sh                      # lists the classes you've written so far
+```
+
+`run.sh` **compiles before it runs**. That matters: `mvn exec:java` on its own does *not*
+compile, so editing a class and re-running it silently executes the previous version — the
+single most common way to lose ten minutes in these labs. It also checks your JDK and tells
+you how to fix it if you're not on 17.
+
+> **Using an IDE?** Open `labs/kafka-labs/pom.xml` in IntelliJ IDEA (*File → Open*, pick the
+> `pom.xml`) and just press **Run** on any class — the IDE compiles for you and `run.sh` is
+> unnecessary. Pass arguments in *Run → Edit Configurations → Program arguments*. See
+> [`labs/SETUP.md`](../SETUP.md).
 
 ### Create the lab topic
 
@@ -181,9 +139,8 @@ public class AvroProducerApp {
 ### 1.2 Run it
 
 ```bash
-cd lab05
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.AvroProducerApp
+cd labs/kafka-labs
+./run.sh AvroProducerApp
 ```
 
 Five records are produced, and the schema is registered on the first send.
@@ -289,7 +246,7 @@ public class AvroConsumerApp {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.AvroConsumerApp
+./run.sh AvroConsumerApp
 ```
 
 You'll see the five decoded orders. Keep this consumer code — Exercise 4 reuses it against
@@ -364,7 +321,7 @@ public class AvroProducerV2App {
 Produce a few v2 records:
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.AvroProducerV2App
+./run.sh AvroProducerV2App
 ```
 
 ### 4.2 Confirm the new version registered
@@ -378,8 +335,7 @@ curl -s http://localhost:8081/subjects/lab05-orders-value/versions | jq .   # no
 Re-run the **Exercise 3 consumer**, unchanged, but under a **new group id**:
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.AvroConsumerApp \
-  -Dexec.args="lab05-consumer-v2"
+./run.sh AvroConsumerApp lab05-consumer-v2
 ```
 
 The new group has no committed offsets, so `auto.offset.reset=earliest` takes effect and it

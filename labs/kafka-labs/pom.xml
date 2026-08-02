@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One Maven project for every Java lab in this course (Labs 01-08).
+
+  You do NOT need to create this file, or any directories; it ships with the repo.
+  Put your lab classes in  src/main/java/com/elephantscale/kafka/  and run them with
+  the ./run.sh helper in this folder:
+
+      ./run.sh ProducerBasic
+      ./run.sh Feed 100
+
+  run.sh compiles before it runs, which matters: `mvn exec:java` on its own will
+  happily execute a stale class from the previous compile.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.elephantscale.kafka</groupId>
+  <artifactId>kafka-labs</artifactId>
+  <version>1.0</version>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <repositories>
+    <!-- Confluent's Avro serdes (Lab 05) are not on Maven Central -->
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- Labs 01-08: the Kafka Java client -->
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>4.0.2</version>
+    </dependency>
+
+    <!-- Lab 05: Avro + Confluent Schema Registry serdes -->
+    <dependency>
+      <groupId>io.confluent</groupId>
+      <artifactId>kafka-avro-serializer</artifactId>
+      <version>8.0.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>1.12.0</version>
+    </dependency>
+
+    <!-- Logging. kafka-clients pulls slf4j-api 1.7.36 transitively; pin the 2.x API
+         so it matches the 2.x binding. Mismatched, SLF4J prints a StaticLoggerBinder
+         warning on every run and silently disables all client logging. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.13</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

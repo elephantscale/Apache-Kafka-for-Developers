@@ -125,9 +125,8 @@ public class ClaimFeeder {
 ```
 
 ```bash
-cd lab05    # or wherever your Maven project is
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ClaimFeeder
+cd labs/kafka-labs
+./run.sh ClaimFeeder
 ```
 
 ### 1.3 Query the live stream

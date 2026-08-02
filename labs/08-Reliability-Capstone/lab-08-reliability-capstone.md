@@ -121,9 +121,8 @@ public class CapstoneIngest {
 Compile it now; you'll run it in Exercise 4 (under failure) and here for a smoke test:
 
 ```bash
-cd lab05    # your Maven project
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.CapstoneIngest -Dexec.args="200"
+cd labs/kafka-labs
+./run.sh CapstoneIngest 200
 ```
 
 > **If a sharp student asks:** what happens to a `send` if two brokers are down (ISR < min.isr)?
@@ -226,7 +225,7 @@ docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
 
 ```bash
 # terminal A — ingest 2000 records (~40s)
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.CapstoneIngest -Dexec.args="2000"
+./run.sh CapstoneIngest 2000
 ```
 
 ```bash
@@ -285,7 +284,7 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
   --topic lab08-claims --group capstone-drain --from-beginning --timeout-ms 10000 > /dev/null
 
 # 2. burst with the group idle -- this is what builds the backlog
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.CapstoneIngest -Dexec.args="5000"
+./run.sh CapstoneIngest 5000
 
 # 3. look at the lag you just created
 docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
