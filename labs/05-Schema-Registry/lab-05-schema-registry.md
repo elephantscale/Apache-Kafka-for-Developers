@@ -79,6 +79,14 @@ Create a project folder `lab05/` with this `pom.xml`:
       <artifactId>avro</artifactId>
       <version>1.12.0</version>
     </dependency>
+    <!-- kafka-clients pulls slf4j-api 1.7.36 transitively; pin the 2.x API so it
+         matches the 2.x binding below. Mismatched, SLF4J prints a StaticLoggerBinder
+         warning on every run and silently disables all client logging. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.13</version>
+    </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
