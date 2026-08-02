@@ -50,7 +50,8 @@ x-kafka-env: &kafka-env
   KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "2"
   KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: "3"
   KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: "2"
-  # Kafka 4 preview features (KIP-848 next-gen rebalance + KIP-932 share groups).
+  # KIP-848 next-gen rebalance: GA in Kafka 4, but consumers must opt in with
+  # group.protocol=consumer. KIP-932 share groups: still early access in 4.0.
   KAFKA_GROUP_COORDINATOR_REBALANCE_PROTOCOLS: "classic,consumer,share"
   KAFKA_GROUP_SHARE_ENABLE: "true"
   KAFKA_UNSTABLE_API_VERSIONS_ENABLE: "true"
