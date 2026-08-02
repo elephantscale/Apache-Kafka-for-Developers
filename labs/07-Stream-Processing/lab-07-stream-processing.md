@@ -276,16 +276,26 @@ CREATE TABLE contacts (
 );
 ```
 
-Feed a few contact events (reuse the CLI producer — some `person_id`s overlap with claims):
+Feed a few contact events (reuse the CLI producer — some `person_id`s overlap with claims).
+
+The timestamps **must line up with the claims you just fed**, because the join below only
+matches within ±1 hour. `ClaimFeeder` stamps events with `Instant.now()`, which is UTC — so
+generate the contact timestamps the same way rather than hardcoding a date:
 
 ```bash
+TS=$(date -u '+%Y-%m-%d %H:%M:%S.000')
 docker exec -i kafka-1 kafka-console-producer.sh --bootstrap-server localhost:9092 \
-  --topic lab07-contacts <<'EOF'
-{"person_id":"person-1","channel":"PHONE","event_time":"2026-01-01 10:00:00.000"}
-{"person_id":"person-2","channel":"PHONE","event_time":"2026-01-01 10:00:05.000"}
-{"person_id":"person-3","channel":"WEB","event_time":"2026-01-01 10:00:10.000"}
+  --topic lab07-contacts <<EOF
+{"person_id":"person-1","channel":"PHONE","event_time":"$TS"}
+{"person_id":"person-2","channel":"PHONE","event_time":"$TS"}
+{"person_id":"person-3","channel":"WEB","event_time":"$TS"}
 EOF
 ```
+
+> **Note the unquoted `<<EOF`** — with `<<'EOF'` the shell would not substitute `$TS` and you
+> would publish the literal text `$TS`, which fails to parse as a timestamp. If your join
+> returns no rows, this is the first thing to check: the two streams must overlap in *event*
+> time, not in the order you happened to run the commands.
 
 ### 5.2 Join claims to contacts by person, within a window
 
