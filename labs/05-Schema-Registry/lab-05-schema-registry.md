@@ -246,7 +246,9 @@ public class AvroConsumerApp {
   public static void main(String[] args) {
     Properties p = new Properties();
     p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    p.put(ConsumerConfig.GROUP_ID_CONFIG, "lab05-consumer");
+    // group id from the command line, default "lab05-consumer" -- Exercise 4 reuses this
+    // same program with a *different* group so it re-reads the topic from the beginning
+    p.put(ConsumerConfig.GROUP_ID_CONFIG, args.length > 0 ? args[0] : "lab05-consumer");
     p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
@@ -254,14 +256,20 @@ public class AvroConsumerApp {
 
     try (Consumer<String, GenericRecord> consumer = new KafkaConsumer<>(p)) {
       consumer.subscribe(List.of("lab05-orders"));
-      long deadline = System.currentTimeMillis() + 8000;
+      // Joining the group costs the first few seconds, and rejoining an existing group
+      // (which is what you do in Exercise 4) costs more -- so give this plenty of room.
+      // Too short a deadline and you exit before the first record arrives, which looks
+      // exactly like "nothing was produced".
+      long deadline = System.currentTimeMillis() + 30000;
       while (System.currentTimeMillis() < deadline) {
         ConsumerRecords<String, GenericRecord> records = consumer.poll(Duration.ofMillis(500));
         for (ConsumerRecord<String, GenericRecord> r : records) {
           GenericRecord v = r.value();
-          // get() returns null for a field the record's own schema doesn't have,
-          // so this same consumer works against both v1 and v2 records (Exercise 4)
-          Object region = v.get("region");
+          // Each record is decoded with the schema it was WRITTEN with, so a v1 record
+          // has no "region" field at all. Ask the schema before reading it --
+          // v.get("region") on a v1 record throws AvroRuntimeException, it does not
+          // return null. This is what lets one consumer handle both versions.
+          Object region = v.getSchema().getField("region") == null ? null : v.get("region");
           System.out.printf("P%d@%d  orderId=%s amount=%s region=%s%n",
               r.partition(), r.offset(), v.get("orderId"), v.get("amount"),
               region == null ? "(absent)" : region);
@@ -359,7 +367,20 @@ curl -s http://localhost:8081/subjects/lab05-orders-value/versions | jq .   # no
 
 ### 4.3 Prove old and new data both read
 
-Re-run the **Exercise 3 consumer** (unchanged, from `earliest`). It reads **all** records —
+Re-run the **Exercise 3 consumer**, unchanged, but under a **new group id**:
+
+```bash
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.AvroConsumerApp \
+  -Dexec.args="lab05-consumer-v2"
+```
+
+The new group has no committed offsets, so `auto.offset.reset=earliest` takes effect and it
+reads the topic from offset 0. (Reusing the Exercise 3 group would show you only the *new*
+v2 records — that group already consumed and committed the v1 ones, and `auto.offset.reset`
+is ignored once a committed offset exists. Same program, same topic, different read
+position: the group **is** the bookmark.)
+
+It reads **all** records —
 the v1 orders print `region=(absent)` and the v2 orders print `region=EAST`. One consumer,
 two schema versions, no redeploy: old data still works.
 
