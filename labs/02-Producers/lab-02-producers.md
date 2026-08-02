@@ -374,7 +374,7 @@ silently losing acknowledged data.
 
 > **If a sharp student asks:** with `acks=all`, "all" means all *in-sync* replicas. If the
 > ISR shrinks to just the leader, "all" is one broker — which is why real durability also
-> needs `min.insync.replicas=2` on the topic. We make that hands-on in Module 7.
+> needs `min.insync.replicas=2` on the topic. We make that hands-on in Module 11 (Lab 08).
 
 ---
 

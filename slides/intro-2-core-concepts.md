@@ -221,7 +221,7 @@ The **ISR** is the set of replicas that are **caught up** with the leader.
 **High-level takeaway for now:** replication + ISR is *why* Kafka can lose a broker
 and keep running without losing your data. The knobs come in the intermediate days.
 
-Notes: Keep this conceptual in the intro. Module 7 (Reliability) is where acks, min.insync.replicas, and the durability trade-offs get hands-on.
+Notes: Keep this conceptual in the intro. Module 11 (Reliability) is where acks, min.insync.replicas, and the durability trade-offs get hands-on.
 
 ---
 

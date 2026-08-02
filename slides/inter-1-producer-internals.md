@@ -78,7 +78,7 @@ The producer must pick **which partition** each record goes to. That's the
 ```
 key "user-1" ─hash─► P2   (every user-1 record, in order)
 key "user-2" ─hash─► P0
-key = None   ─────► P0,P1,P2  (balanced)
+key = null   ─────► P0,P1,P2  (balanced)
 ```
 
 **Design rule:** choose a key when you need per-entity ordering; go keyless for
@@ -173,7 +173,7 @@ leader, "all" is one. The topic/broker setting **`min.insync.replicas`** sets th
 - If too few replicas are in sync, the producer gets an error instead of a false "durable"
 - Together: `acks=all` + `min.insync.replicas=2` = "acknowledged means safely on ≥2 brokers"
 
-Notes: This is the durability contract. We only introduce it here; Module 7 (Reliability) makes it hands-on. The point for producers: `acks=all` alone isn't enough without the ISR floor.
+Notes: This is the durability contract. We only introduce it here; Module 11 (Reliability) makes it hands-on. The point for producers: `acks=all` alone isn't enough without the ISR floor.
 
 ---
 
