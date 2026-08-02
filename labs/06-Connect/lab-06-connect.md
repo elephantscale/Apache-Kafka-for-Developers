@@ -288,8 +288,8 @@ public class DlqInjector {
 ```
 
 ```bash
-cd lab06 && mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.DlqInjector
+cd labs/kafka-labs
+./run.sh DlqInjector
 ```
 
 ### 5.3 Inspect the DLQ

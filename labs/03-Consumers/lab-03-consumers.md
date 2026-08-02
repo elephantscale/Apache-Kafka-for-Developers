@@ -31,7 +31,7 @@ By the end of this lab you will be able to:
 >
 > These programs use the small **Maven project** introduced in Lab 02: the `kafka-clients`
 > dependency on the classpath, sources under `src/main/java/com/elephantscale/kafka/`, and each
-> class run with `mvn -q exec:java -Dexec.mainClass=…`. (Consumers here use only `kafka-clients`
+> class run with `./run.sh <ClassName>`. (Consumers here use only `kafka-clients`
 > — no Avro serde needed.)
 
 ### Create the lab topic and a feeder
@@ -44,7 +44,7 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 We'll drive it with a small producer you can re-run whenever a topic needs data:
 
 ```java
-// save as Feed.java  — usage: mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"
+// save as Feed.java  — usage: ./run.sh Feed 100
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -72,8 +72,7 @@ public class Feed {
 ```
 
 ```bash
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"
+./run.sh Feed 100
 ```
 
 ---
@@ -130,8 +129,8 @@ public class ConsumerBasic {
 ### 1.2 Run it
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="100"   # ensure data
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerBasic
+./run.sh Feed 100   # ensure data
+./run.sh ConsumerBasic
 ```
 
 You'll see all 100 events, labeled by partition and offset. Stop with `Ctrl-C`.
@@ -204,9 +203,9 @@ public class ConsumerAutocommitLoss {
 ### 2.2 Run, crash, restart
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="20"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerAutocommitLoss   # processes ~5, then hard-exits
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerAutocommitLoss   # restart — note where it resumes
+./run.sh Feed 20
+./run.sh ConsumerAutocommitLoss   # processes ~5, then hard-exits
+./run.sh ConsumerAutocommitLoss   # restart — note where it resumes
 ```
 
 On restart it likely **skips ahead**, past records it never actually finished — because the
@@ -271,9 +270,9 @@ public class ConsumerManual {
 ### 3.2 Run, crash, restart
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="20"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerManual   # processes 5, crashes
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerManual   # restart
+./run.sh Feed 20
+./run.sh ConsumerManual   # processes 5, crashes
+./run.sh ConsumerManual   # restart
 ```
 
 On restart it resumes at the **last committed** record. Records 1–4 were committed, but record 5
@@ -346,7 +345,7 @@ public class ConsumerReplay {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerReplay
+./run.sh ConsumerReplay
 ```
 
 It re-reads **every** partition from offset 0, regardless of what any group committed — so the
@@ -439,11 +438,11 @@ public class ConsumerRebalance {
 ### 5.2 Trigger a rebalance
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.Feed -Dexec.args="300"
+./run.sh Feed 300
 # terminal A:
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerRebalance
+./run.sh ConsumerRebalance
 # terminal B (same group — start while A runs):
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ConsumerRebalance
+./run.sh ConsumerRebalance
 ```
 
 Watch terminal A: when B joins, A prints **REVOKE** for the partitions it gives up (committing

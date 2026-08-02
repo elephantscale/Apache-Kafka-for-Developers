@@ -37,56 +37,32 @@ By the end of this lab you will be able to:
 
 ### Java project setup
 
-Create a project folder `lab02/` with this `pom.xml`, and put sources under
-`lab02/src/main/java/com/elephantscale/kafka/`:
+All the Java in this course lives in **one ready-made Maven project** that ships with the
+repo — you don't create a project, a `pom.xml`, or any directories:
 
-```xml
-<!-- lab02/pom.xml -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.elephantscale.kafka</groupId>
-  <artifactId>lab02</artifactId>
-  <version>1.0</version>
-  <properties>
-    <maven.compiler.release>17</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-clients</artifactId>
-      <version>4.0.2</version>
-    </dependency>
-    <!-- kafka-clients pulls slf4j-api 1.7.36 transitively; pin the 2.x API so it
-         matches the 2.x binding below. Mismatched, SLF4J prints a StaticLoggerBinder
-         warning on every run and silently disables all client logging. -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <!-- run a class with: mvn -q exec:java -Dexec.mainClass=... -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
-      </plugin>
-    </plugins>
-  </build>
-</project>
+```bash
+cd labs/kafka-labs
 ```
+
+Save each lab class as `src/main/java/com/elephantscale/kafka/<ClassName>.java` (the file name
+must match the class name, and the first line is `package com.elephantscale.kafka;`), then run
+it with the helper:
+
+```bash
+./run.sh ProducerBasic        # no arguments
+./run.sh Feed 100             # with arguments
+./run.sh                      # lists the classes you've written so far
+```
+
+`run.sh` **compiles before it runs**. That matters: `mvn exec:java` on its own does *not*
+compile, so editing a class and re-running it silently executes the previous version — the
+single most common way to lose ten minutes in these labs. It also checks your JDK and tells
+you how to fix it if you're not on 17.
+
+> **Using an IDE?** Open `labs/kafka-labs/pom.xml` in IntelliJ IDEA (*File → Open*, pick the
+> `pom.xml`) and just press **Run** on any class — the IDE compiles for you and `run.sh` is
+> unnecessary. Pass arguments in *Run → Edit Configurations → Program arguments*. See
+> [`labs/SETUP.md`](../SETUP.md).
 
 ### Create the lab topic
 
@@ -144,9 +120,8 @@ public class ProducerBasic {
 ### 1.2 Run it
 
 ```bash
-cd lab02
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerBasic
+cd labs/kafka-labs
+./run.sh ProducerBasic
 ```
 
 You'll see ten `ok …[partition] @ offset …` lines. Note that keys `user-0/1/2` map to
@@ -215,7 +190,7 @@ public class ProducerKeys {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerKeys
+./run.sh ProducerKeys
 ```
 
 Each key prints **exactly one** partition — no key ever spans partitions.
@@ -293,9 +268,9 @@ public class ProducerThroughput {
 ### 3.2 Compare configurations
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="0 none"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="20 none"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="20 zstd"
+./run.sh ProducerThroughput 0 none
+./run.sh ProducerThroughput 20 none
+./run.sh ProducerThroughput 20 zstd
 ```
 
 Compare the `rec/s`. `linger.ms=20` usually beats `0` — waiting a few milliseconds builds
@@ -359,9 +334,9 @@ public class ProducerAcks {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="0"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="1"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="all"
+./run.sh ProducerAcks 0
+./run.sh ProducerAcks 1
+./run.sh ProducerAcks all
 ```
 
 In theory `acks=0` is fastest and `acks=all` slowest, since `all` waits for the in-sync
@@ -423,7 +398,7 @@ public class ProducerIdempotent {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerIdempotent
+./run.sh ProducerIdempotent
 ```
 
 It runs like a normal producer — the guarantee is invisible until a retry happens. The

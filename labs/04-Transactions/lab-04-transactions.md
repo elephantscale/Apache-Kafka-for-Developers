@@ -33,62 +33,32 @@ By the end of this lab you will be able to:
 
 ### Java project setup
 
-Create a project folder `lab04/` with this `pom.xml` (same pattern as the other Java labs):
+All the Java in this course lives in **one ready-made Maven project** that ships with the
+repo — you don't create a project, a `pom.xml`, or any directories:
 
-```xml
-<!-- lab04/pom.xml -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.elephantscale.kafka</groupId>
-  <artifactId>lab04</artifactId>
-  <version>1.0</version>
-  <properties>
-    <maven.compiler.release>17</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-clients</artifactId>
-      <version>4.0.2</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>2.17.1</version>
-    </dependency>
-    <!-- kafka-clients pulls slf4j-api 1.7.36 transitively; pin the 2.x API so it
-         matches the 2.x binding below. Mismatched, SLF4J prints a StaticLoggerBinder
-         warning on every run and silently disables all client logging. -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>2.0.13</version>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <!-- run a class with: mvn -q exec:java -Dexec.mainClass=... -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
-      </plugin>
-    </plugins>
-  </build>
-</project>
+```bash
+cd labs/kafka-labs
 ```
 
-Put Java sources under `lab04/src/main/java/com/elephantscale/kafka/`.
+Save each lab class as `src/main/java/com/elephantscale/kafka/<ClassName>.java` (the file name
+must match the class name, and the first line is `package com.elephantscale.kafka;`), then run
+it with the helper:
+
+```bash
+./run.sh ProducerBasic        # no arguments
+./run.sh Feed 100             # with arguments
+./run.sh                      # lists the classes you've written so far
+```
+
+`run.sh` **compiles before it runs**. That matters: `mvn exec:java` on its own does *not*
+compile, so editing a class and re-running it silently executes the previous version — the
+single most common way to lose ten minutes in these labs. It also checks your JDK and tells
+you how to fix it if you're not on 17.
+
+> **Using an IDE?** Open `labs/kafka-labs/pom.xml` in IntelliJ IDEA (*File → Open*, pick the
+> `pom.xml`) and just press **Run** on any class — the IDE compiles for you and `run.sh` is
+> unnecessary. Pass arguments in *Run → Edit Configurations → Program arguments*. See
+> [`labs/SETUP.md`](../SETUP.md).
 
 ### Create the lab topics
 
@@ -102,7 +72,7 @@ done
 Seed some input:
 
 ```java
-// save as SeedInput.java  — usage: mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
+// save as SeedInput.java  — usage: ./run.sh SeedInput 20
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -130,9 +100,8 @@ public class SeedInput {
 ```
 
 ```bash
-cd lab04
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
+cd labs/kafka-labs
+./run.sh SeedInput 20
 ```
 
 ---
@@ -183,7 +152,7 @@ public class TxnProducer {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.TxnProducer
+./run.sh TxnProducer
 ```
 
 ### 1.2 Read them back (committed)
@@ -255,7 +224,7 @@ public class TxnAbort {
 ```
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.TxnAbort
+./run.sh TxnAbort
 ```
 
 ### 2.2 Compare the two isolation levels
@@ -370,8 +339,8 @@ public class PipelineEos {
 ### 3.2 Run it clean
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos   # Ctrl-C once "committed" lines stop appearing
+./run.sh SeedInput 20
+./run.sh PipelineEos   # Ctrl-C once "committed" lines stop appearing
 ```
 
 Check the output count:
@@ -407,9 +376,9 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 Edit `PipelineEos.java`'s `group.id` to `lab04-eos-crash`, then:
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SeedInput -Dexec.args="20"
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos -Dexec.args="5"  # crashes right before committing the 5th record
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.PipelineEos                  # restart; runs to completion, Ctrl-C when idle
+./run.sh SeedInput 20
+./run.sh PipelineEos 5  # crashes right before committing the 5th record
+./run.sh PipelineEos                  # restart; runs to completion, Ctrl-C when idle
 ```
 
 ### 4.2 Count the output

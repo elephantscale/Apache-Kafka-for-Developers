@@ -95,61 +95,75 @@ java -version     # JDK 17.x
 mvn -version      # Maven 3.9+
 ```
 
-### The per-lab Maven project
+### The Maven project
 
-Each lab is a small, self-contained Maven project — the lab guide gives you the exact
-`pom.xml` and the classes to create. The shape is always the same:
+All the Java in this course lives in **one ready-made Maven project** that ships with this
+repo. You do not create a project, write a `pom.xml`, or make any directories:
 
 ```
-labNN/
-├── pom.xml                                  # dependencies (kafka-clients, etc.)
-└── src/main/java/com/elephantscale/kafka/   # your .java sources go here
+labs/kafka-labs/
+├── pom.xml                                  # all dependencies, already declared
+├── run.sh                                   # compile + run helper
+└── src/main/java/com/elephantscale/kafka/   # put your lab classes here
 ```
 
-Every lab's `pom.xml` includes at least `org.apache.kafka:kafka-clients`; the Schema
-Registry lab (Lab 05) adds the Confluent Avro serde (`io.confluent:kafka-avro-serializer`)
-and therefore the Confluent Maven repository (`https://packages.confluent.io/maven/`).
+The `pom.xml` already includes everything any lab needs: `org.apache.kafka:kafka-clients`,
+the Confluent Avro serde for Lab 05 (`io.confluent:kafka-avro-serializer`, with the Confluent
+repository), Avro, and an SLF4J binding.
 
-Compile and run a class like this (the pattern used throughout the labs):
+Save a lab class as `src/main/java/com/elephantscale/kafka/<ClassName>.java` — the file name
+must match the class name, and the first line is `package com.elephantscale.kafka;` — then:
 
 ```bash
-cd labNN
-mvn -q compile
-mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.SomeClass
-# pass program args with -Dexec.args="..."
+cd labs/kafka-labs
+./run.sh ProducerBasic        # no arguments
+./run.sh Feed 100             # with arguments
+./run.sh                      # lists the classes you've written so far
 ```
+
+`run.sh` **compiles before it runs**, checks that you're on JDK 17, and tells you exactly how
+to switch if you're not. The compile step matters: `mvn exec:java` on its own does *not*
+compile, so editing a class and re-running it would silently execute the previous version.
+
+> **Doing it the long way.** `run.sh` is a convenience, not a requirement. The equivalent is:
+> ```bash
+> mvn -q compile
+> mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerBasic -Dexec.args="..."
+> ```
+> Note the two steps — running `exec:java` without `compile` is the single most common way to
+> lose ten minutes in these labs.
 
 > **Prefer reading Python?** [`APPENDIX-python-reference.md`](APPENDIX-python-reference.md)
 > has every producer/consumer/transaction example in the `confluent-kafka` Python client.
 > It is optional — the labs themselves are Java — but the Kafka concepts and configs are
 > identical in both.
 
-> The first `mvn` build downloads dependencies from Maven Central (and, for Lab 05,
-> the Confluent repo). If you are on a restricted network, see
-> [`VM-SPEC.md`](VM-SPEC.md) for pre-caching the Maven repository.
+> The first build downloads dependencies from Maven Central and the Confluent repo. If you are
+> on a restricted network, see [`VM-SPEC.md`](VM-SPEC.md) for pre-caching the Maven repository.
+> Running `./run.sh` once before class warms the cache for every lab.
 
 ### Using an IDE
 
-The labs are written so that **Maven on the command line is always enough** — every lab
-gives you the exact `mvn` commands, and nothing depends on an IDE. But because each lab
-is an ordinary Maven project, any Java IDE will open one directly:
+The labs are written so that **the command line is always enough**. But because this is an
+ordinary Maven project, any Java IDE will open it directly — and in an IDE you don't need
+`run.sh` at all, because the IDE compiles for you:
 
 - **IntelliJ IDEA** (Community Edition is fine — no Ultimate features are used):
-  *File → Open →* select the lab's `pom.xml` → **Open as Project**. IntelliJ imports the
+  *File → Open →* select `labs/kafka-labs/pom.xml` → **Open as Project**. IntelliJ imports the
   dependencies itself; you don't need to run `mvn` first.
-  Run a class with the green ▶ gutter arrow next to `main`. To pass the arguments some
-  labs use, edit the run configuration and set *Program arguments* — the IDE equivalent of
-  `-Dexec.args="..."`.
+  Run a class with the green ▶ gutter arrow next to `main`. To pass the arguments some labs
+  use, edit the run configuration and set *Program arguments* — the IDE equivalent of
+  `./run.sh SomeClass those args`.
 - **VS Code** with the *Extension Pack for Java*, or **Eclipse** (*Import → Existing Maven
   Projects*), work the same way.
 
-Two things an IDE genuinely helps with in this course: **stepping through a consumer poll
-loop in the debugger** (Lab 03) and **breakpointing inside a transaction** to watch what a
+Two things an IDE genuinely helps with in this course: **stepping through a consumer poll loop
+in the debugger** (Lab 03) and **breakpointing inside a transaction** to watch what a
 `read_committed` reader can and cannot see (Lab 04).
 
-> Set the project SDK to **JDK 17** if the IDE offers a choice. If you keep several labs
-> open at once, open each `labNN/pom.xml` as its own project (or add them as Maven modules)
-> — they are independent projects, not one reactor build.
+> Set the project SDK to **JDK 17** if the IDE offers a choice. There is only one project to
+> open — every lab's classes live side by side in it, so you can flick between Lab 02's
+> producer and Lab 04's transactional pipeline without reimporting anything.
 
 ## Bring Up the Core Cluster
 
