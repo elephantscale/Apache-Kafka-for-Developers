@@ -104,11 +104,17 @@ curl -s -X POST -H "Content-Type: application/json" http://localhost:8083/connec
       "incrementing.column.name": "id",
       "topic.prefix": "pg-",
       "poll.interval.ms": "2000",
+      "numeric.mapping": "best_fit",
       "value.converter": "org.apache.kafka.connect.json.JsonConverter",
       "value.converter.schemas.enable": "false"
     }
   }' | jq .
 ```
+
+> **Why `numeric.mapping`:** without it, `NUMERIC(10,2)` arrives as a Connect *Decimal*
+> logical type, which JsonConverter renders as base64 — `"amount":"EGg="` instead of
+> `"amount":42.00`. `best_fit` maps the column to a numeric JSON value instead. It is one of
+> the most common "my data looks like garbage" surprises with the JDBC source.
 
 ### 2.2 Check status and read the topic
 
@@ -230,9 +236,10 @@ curl -s -X POST -H "Content-Type: application/json" http://localhost:8083/connec
       "store.url": "http://minio:9000",
       "storage.class": "io.confluent.connect.s3.storage.S3Storage",
       "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
-      "flush.size": "5",
+      "flush.size": "1",
       "aws.access.key.id": "minioadmin",
       "aws.secret.access.key": "minioadmin",
+      "key.converter": "org.apache.kafka.connect.storage.StringConverter",
       "value.converter": "org.apache.kafka.connect.json.JsonConverter",
       "value.converter.schemas.enable": "false",
       "errors.tolerance": "all",
@@ -289,6 +296,19 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.DlqInjector
 
 The good records land in MinIO; the two bad ones are routed to `dlq-events` — and the sink task
 stays `RUNNING`.
+
+> **Note `flush.size: 1` here.** `flush.size` counts records **per partition**, not per topic.
+> `lab06-events` has 3 partitions, so 5 good records land roughly 2/2/1 — with `flush.size: 5`
+> no partition ever reaches the threshold and *nothing* is written, which looks like a broken
+> sink. Exercise 3 got away with `flush.size: 3` because the JDBC source writes all rows to a
+> single partition. In production you pair a realistic `flush.size` with `rotate.interval.ms`
+> so partial batches still get flushed on a timer.
+
+> **Note `key.converter` too.** The sink sets it explicitly to `StringConverter` because these
+> records have plain string keys (`k0`, `k1`, …). Without it the key falls back to the worker
+> default — `JsonConverter` — which cannot parse `k0`, so *every* record fails on its key and
+> the DLQ fills with your good records as well as the bad. If you see healthy records in the
+> DLQ, check the `__connect.errors.stage` header: `KEY_CONVERTER` is the giveaway.
 
 ```bash
 curl -s http://localhost:8083/connectors/events-s3-sink/status | jq '.tasks[].state'   # RUNNING
