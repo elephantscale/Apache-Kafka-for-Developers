@@ -104,11 +104,16 @@ broker-coordinated** instead of stop-the-world.
   keep flowing
 - Less "everybody stop"; smoother scaling and recovery
 
-**For you as a developer:** your code is the same poll loop. This is mostly a
-performance/stability improvement under the hood — good to know it exists, not something you
-hand-code.
+**It is GA in Kafka 4 — but opt-in per consumer.** The default is still the classic protocol:
 
-Notes: Keep this conceptual. The point is awareness that modern Kafka rebalances more gracefully; students don't need to configure the protocol to benefit from the model.
+```java
+c.put(ConsumerConfig.GROUP_PROTOCOL_CONFIG, "consumer");   // default: "classic"
+```
+
+**For you as a developer:** your poll loop, your commits, your rebalance listener — all
+unchanged. You flip one config and the group coordinates differently underneath.
+
+Notes: Correct the common half-truth here: KIP-848 is GA in Kafka 4, but a consumer does *not* get it automatically — `group.protocol` still defaults to `classic`. The broker side must also allow it (`group.coordinator.rebalance.protocols`); our lab compose already enables `classic,consumer`, so students can try the flip. Caveat worth stating: a group must be either all-classic or all-consumer during migration, and `onPartitionsLost` semantics differ slightly — which is why teams migrate deliberately rather than flipping in place.
 
 ---
 
@@ -139,6 +144,8 @@ The default: the consumer commits offsets **automatically** on a timer.
 Properties c = new Properties();
 c.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 c.put(ConsumerConfig.GROUP_ID_CONFIG, "billing");
+c.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,   StringDeserializer.class.getName());
+c.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 c.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);       // default
 c.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000);  // every 5s
 ```
@@ -269,7 +276,8 @@ Notes: This checklist is basically Lab 03. Each item maps to an exercise or a "w
 ## Summary
 
 - A consumer is a **poll loop**; the group shares partitions and **rebalances** on membership change
-- **KIP-848** makes rebalances incremental and broker-coordinated — smoother, same code for you
+- **KIP-848** makes rebalances incremental and broker-coordinated — GA in Kafka 4, opt in with
+  `group.protocol=consumer`; your code is unchanged
 - **Offsets** live in `__consumer_offsets`; a consumer resumes from the last committed offset
 - **Auto-commit** (timer) risks loss; **manual commit after processing** gives at-least-once
 - Delivery semantics = **where you put `commitSync()`**; exactly-once needs transactions (Module 7)

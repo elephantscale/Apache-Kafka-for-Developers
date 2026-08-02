@@ -154,6 +154,8 @@ uncommitted/aborted data.
 Properties c = new Properties();
 c.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 c.put(ConsumerConfig.GROUP_ID_CONFIG, "downstream");
+c.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,   StringDeserializer.class.getName());
+c.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 c.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");  // default is read_uncommitted
 ```
 
