@@ -73,6 +73,10 @@ ZooKeeper**.
 
 **It worked for years — but it was a second system to operate, and a bottleneck.**
 
+<img src="../images/zookeeper.png" style="width:28%;"/>
+
+Notes: If anyone in the room has run Kafka before, this slide is where they nod. Ask who has operated a ZooKeeper ensemble — the war stories sell the next slide better than you can.
+
 ---
 
 ## Kafka 4: KRaft — ZooKeeper Is Gone
