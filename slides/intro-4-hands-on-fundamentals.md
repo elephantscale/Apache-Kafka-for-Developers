@@ -202,7 +202,7 @@ Notes: This is the payoff slide — the whole consumer-group scaling story from 
 
 ## Lab 01 — What You'll Do
 
-Now do it yourself, end to end:
+**Stop here and run the lab.** Everything you need is on the slides you just saw.
 
 1. **Start & inspect** the cluster — confirm 3 healthy brokers
 2. **Create** the `orders` topic (3 partitions, RF 3) and read its layout
@@ -211,7 +211,25 @@ Now do it yourself, end to end:
 
 *→ `labs/01-Fundamentals/lab-01-fundamentals.md`*
 
-Everything you need is on the slides you just saw. Ask questions as you go.
+Environment: 3-broker KRaft cluster via Docker Compose · **~45 minutes**
+
+Notes: Circulate rather than presenting. The two places people get stuck are Docker not being up and a consumer that looks "broken" when it is simply idle at the end of the log.
+
+---
+
+## Debrief — What You Just Saw
+
+Welcome back. Before we move on, let's connect the lab to the concepts:
+
+- When you added a **4th consumer** to a 3-partition topic, what happened — and why?
+- What did `--describe` tell you about **leader** vs. **replicas** vs. **ISR**?
+- With keys, did the same key ever land on two different partitions?
+- What was **lag** doing while a consumer was stopped?
+
+> These four questions are the whole intro day in miniature. If all four have clean
+> answers, you're ready for the intermediate material.
+
+Notes: Ask, don't tell — let students answer. This is the checkpoint that reveals who is genuinely following before the pace increases tomorrow. If the room is quiet on the 4th-consumer question, re-draw the partition-ceiling diagram.
 
 ---
 

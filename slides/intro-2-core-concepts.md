@@ -7,7 +7,7 @@ Elephant Scale
 ## Agenda
 
 - Topics, partitions, and offsets — the log abstraction
-- Producers, consumers, brokers
+- Producers, consumers, brokers — and translating Kafka's vocabulary
 - Consumer groups and parallelism
 - Replication, leaders, and fault tolerance (ISR) at a high level
 - Retention: time, size, and log compaction
@@ -125,6 +125,28 @@ Three roles make up the system:
 
 Producers and consumers are **your code** (Java in this course). Brokers are the
 Kafka cluster — for us, three Docker containers.
+
+---
+
+## If Kafka Were Named Today
+
+Kafka's vocabulary is from 2010 and predates today's streaming and database conventions.
+If you come from other systems, this translation makes it click faster:
+
+| Kafka says | Everyone else says |
+|---|---|
+| **Broker** | Server, or Node |
+| **Producer** | Publisher, or Writer |
+| **Consumer** | Subscriber, or Reader |
+| **Topic** | Stream, or Channel |
+| **Partition** | **Shard** — a horizontal slice, exactly the database idea |
+| **Offset** | **Cursor** — your position in the log |
+| **Consumer Group** | Subscription, or a worker pool sharing the load |
+
+> The names are historical, not technical destiny — the **concepts** are what matter.
+> When a term feels odd, translate it in your head.
+
+Notes: This slide saves an hour of confusion later. "Partition = shard" and "offset = cursor" are the two that unlock the most — developers already own both concepts, they just don't recognize them under Kafka's names. Invite the room to name the equivalent in whatever they use today (JMS, MQ, SQS, a database read cursor).
 
 ---
 

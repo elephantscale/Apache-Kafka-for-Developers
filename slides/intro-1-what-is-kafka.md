@@ -7,9 +7,11 @@ Elephant Scale
 ## Agenda
 
 - Real-time streaming vs. batch; the problem Kafka solves
+- Where Kafka came from
 - Event-driven architecture: publish/subscribe vs. request/response
 - Kafka use cases and who uses Kafka
 - Where Kafka fits: the modern data platform
+- Streaming-first design and common enterprise EDA patterns
 
 ---
 
@@ -72,6 +74,26 @@ to every system that needs it:
 - **N** producers × **M** consumers = an unmaintainable web of integrations
 
 This is the tangle Kafka was built at LinkedIn to untangle.
+
+---
+
+## Where Kafka Came From
+
+- Built at **LinkedIn** around **2010** to untangle exactly the mess on the previous slide —
+  every system wired to every other. They needed **one** high-throughput pipeline for activity
+  and operational data.
+- Created by **Jay Kreps, Neha Narkhede, and Jun Rao**; open-sourced in **2011**, a top-level
+  **Apache** project by **2012**.
+- **The name:** Kreps named it after the writer **Franz Kafka** — a system "optimized for
+  writing" deserved an author's name.
+- The three creators left LinkedIn in **2014** to found **Confluent**, still the main
+  commercial steward of Kafka.
+- Full circle: LinkedIn today runs Kafka at roughly **7 trillion messages a day**.
+
+<img src="../images/Franz_Kafka,_1923.jpg" style="width:22%;"/> &nbsp;
+<img src="../images/kafka-metamorphosis-bug.jpg" style="width:30%;"/>
+
+Notes: Worth 60 seconds — it makes the technology human and gives the N×M slide a real origin. The Metamorphosis joke lands with most rooms: the one book everyone half-remembers from school, and here it is running your payments.
 
 ---
 
@@ -175,15 +197,21 @@ Notes: Both patterns coexist in real systems. The point isn't "REST is bad" — 
 
 Kafka runs the real-time backbone at companies operating at enormous scale:
 
-- **LinkedIn** — where Kafka was created; trillions of messages per day
-- **Uber** — matching, pricing, and fraud on live event streams
-- **Netflix** — streaming telemetry and data pipelines
-- **Thousands of enterprises** across banking, retail, telecom, logistics, and IoT
+| | Scale |
+|---|---|
+| **LinkedIn** — where Kafka was created | ~7 trillion messages/day |
+| **Uber** — matching, pricing, fraud | ~1 trillion messages/day |
+| **Netflix** — telemetry and data pipelines | trillions of events/day |
+| **Cloudflare** — edge logs and analytics | petabytes/day |
+| **Walmart** — peak retail events | billions/day |
+
+Plus **thousands of enterprises** across banking, government, retail, telecom, logistics,
+and IoT.
 
 It has become the **de facto standard** for event streaming — which is why fluency
 with Kafka is now a core skill for developers, not a specialty.
 
-Notes: The scale numbers matter less than the ubiquity. If they join almost any data-heavy engineering team, Kafka will be somewhere in the architecture.
+Notes: The numbers are headroom, not a target — the point is that nothing you build in this course will strain Kafka. Ubiquity matters more than scale: join almost any data-heavy engineering team and Kafka is somewhere in the architecture.
 
 ---
 
@@ -213,6 +241,50 @@ We'll meet each of these in this course.
 
 ---
 
+## Streaming-First Application Design
+
+The architectural shift Kafka enables — where the **event**, not the database row, is the
+source of truth.
+
+**Traditional:**
+```
+App ──► Database ──► Report   (batch, hours later)
+```
+
+**Streaming-first:**
+```
+App ──► Kafka ──┬──► real-time processor ──► immediate action
+                ├──► data lake            (durable replay / history)
+                ├──► ML pipeline          (continuous features)
+                └──► microservices        (event-driven triggers)
+```
+
+- One write, many independent readers — each added without touching the producer
+- The database becomes *a* consumer of the log, not the single gatekeeper of truth
+- History is retained, so a new consumer can be added later and **replay from the beginning**
+
+Notes: This is the mental shift that's harder than any API. Teams that keep treating the DB as the source of truth and Kafka as "just a queue in between" never get the benefits. Ask the room where their current source of truth lives.
+
+---
+
+## Enterprise Streaming Patterns
+
+Names you'll hear once Kafka is in the architecture — worth recognizing early:
+
+- **Event Sourcing** — store every state change as an event; derive current state by replaying
+  the log rather than overwriting a row
+- **CQRS** — separate the **write** model (commands) from the **read** model (queries),
+  connected by events
+- **Saga** — coordinate a long-running transaction across services as a chain of events with
+  compensating actions, instead of a distributed lock
+- **CDC (Change Data Capture)** — stream a database's changes into Kafka, so existing systems
+  become event sources without being rewritten
+- **Fan-out** — one event, many independent consumers reacting on their own
+
+Notes: Don't teach these in depth here — just plant the vocabulary so the terms aren't new when they appear in design discussions. CDC is usually the most immediately relevant: it's how an organization with established databases starts an event-driven journey without a rewrite.
+
+---
+
 ## A Developer's Mental Model
 
 For the rest of this course, hold onto this:
@@ -234,4 +306,6 @@ offsets, and consumer groups.
 - Kafka replaces the **N×M** integration tangle with one durable log in the middle
 - It **decouples** producers from consumers and lets consumers **replay** history
 - Publish/subscribe adds new consumers with **zero producer changes**
+- **Streaming-first** design treats events, not database rows, as the source of truth
+- Patterns to recognize: **Event Sourcing, CQRS, Saga, CDC, fan-out**
 - Kafka is the **de facto standard** for event streaming and the hub of the modern data platform
