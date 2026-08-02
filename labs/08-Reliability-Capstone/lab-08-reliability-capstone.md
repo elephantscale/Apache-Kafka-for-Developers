@@ -248,14 +248,20 @@ sleep 20
 docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
   --describe --topic lab08-claims        # ISR back to {1,2,3}
 
-# count what actually landed (should equal acknowledged=2000)
-docker exec kafka-1 kafka-run-class.sh kafka.tools.GetOffsetShell \
+# count what actually landed (should equal everything you have ingested into this topic)
+docker exec kafka-1 kafka-get-offsets.sh \
   --bootstrap-server localhost:9092 --topic lab08-claims | \
   awk -F: '{sum+=$3} END {print "total records:", sum}'
 ```
 
-The total equals what the producer acknowledged — a broker died mid-stream and **not one
-acknowledged record was lost**.
+The total equals everything the producer ever acknowledged on this topic — 2200 if you ran
+Exercise 1's 200 and then this 2000. A broker died mid-stream and **not one acknowledged
+record was lost**.
+
+> **If the count comes back 0:** you're on the old command. `kafka.tools.GetOffsetShell` was
+> removed in Kafka 4 (the tools moved to `org.apache.kafka.tools`), and
+> `kafka-run-class.sh` on a missing class prints nothing and exits 0 — so the `awk` sums an
+> empty stream and reports `0`, which reads as "we lost everything". Use `kafka-get-offsets.sh`.
 
 > **If a sharp student asks:** what if I'd killed two brokers? With `min.insync.replicas=2` and
 > RF 3, losing two brokers drops the ISR below the floor, so producers get
@@ -269,17 +275,33 @@ acknowledged record was lost**.
 > **What this shows:** the operational reflex from the module — when a consumer group lags, scale
 > it toward the partition count and watch lag drain.
 
-1. Produce a burst faster than a single consumer drains it (run `CapstoneIngest 5000`).
-2. Start a **console consumer group** on `lab08-claims` with one member; watch lag climb in
-   Grafana or via `--describe`.
-3. Add two more consumers in the same group (3 total = partition count); watch lag **drain**.
-4. Add a fourth — confirm it sits **idle** (the partition ceiling).
+Build the backlog **before** any consumer is running — on a laptop a single console consumer
+drains 5000 small records as fast as you can produce them, so "watch lag climb" shows you a
+flat zero. Create the lag first, then scale into it:
 
 ```bash
-# one member (run three of these in the same group to scale)
+# 1. register the group and stop it immediately, so it has committed offsets to lag behind
+docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic lab08-claims --group capstone-drain --from-beginning --timeout-ms 10000 > /dev/null
+
+# 2. burst with the group idle -- this is what builds the backlog
+mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.CapstoneIngest -Dexec.args="5000"
+
+# 3. look at the lag you just created
+docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
+  --describe --group capstone-drain
+```
+
+You'll see roughly 5000 spread across the three partitions. Now scale into it — run this in
+three separate terminals (3 = the partition count) and re-run the `--describe` as they work:
+
+```bash
 docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 \
   --topic lab08-claims --group capstone-drain
 ```
+
+Lag drains to 0. Then start a **fourth** consumer in the same group and re-run `--describe`:
+it is assigned no partitions and sits idle — the partition ceiling.
 
 > **If a sharp student asks:** the fourth consumer is idle — is that wasted? Yes, for this topic:
 > a group can't have more active consumers than partitions. To scale past 3 you'd need more
