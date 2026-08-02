@@ -237,6 +237,8 @@ public class TxnAbort {
         producer.send(new ProducerRecord<>("lab04-output",
             String.format("{\"batch\": 2, \"i\": %d}", i)));
       }
+      producer.flush();              // force these records to the broker BEFORE aborting,
+                                     // so there is really something on disk to hide
       producer.abortTransaction();
       System.out.println("aborted batch 2");
     }
