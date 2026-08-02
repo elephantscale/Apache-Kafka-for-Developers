@@ -50,6 +50,10 @@ command line.
 - *For the Intermediate course:* Kafka fundamentals (the Introduction course, or equivalent
   experience)
 
+> **Lab language for this delivery:** the hands-on labs and all slide code are written in
+> **Java**, using the Apache Kafka Java client built with **Maven** (JDK 17). No Python is
+> required to complete any lab.
+
 ## Objectives
 
 By the end of the track, participants will be able to:
@@ -103,6 +107,24 @@ By the end of the track, participants will be able to:
 # Intermediate (3 Days)
 
 *Developer-level skills for building production streaming applications.*
+
+> **A note on module numbering.** The Intermediate modules are numbered 1–7 below because the
+> Intermediate course is also deliverable standalone. When the two courses run as one 4-day
+> track, the slides and labs number every module continuously — so Intermediate Module *N*
+> appears there as **Module *N* + 4**:
+>
+> | Intermediate | Combined track | Topic |
+> |---|---|---|
+> | Module 1 | **Module 5** | Producer Internals |
+> | Module 2 | **Module 6** | Consumer Internals |
+> | Module 3 | **Module 7** | Delivery Semantics & Transactions |
+> | Module 4 | **Module 8** | Serialization & Schema Registry |
+> | Module 5 | **Module 9** | Kafka Connect |
+> | Module 6 | **Module 10** | Stream Processing |
+> | Module 7 | **Module 11** | Reliability, Scaling & Operations |
+>
+> Introduction Modules 1–4 keep the same numbers in both. Cross-references inside the slides
+> and labs always use the **combined-track** numbers.
 
 ## Day 1 — Producers, Consumers & Delivery Guarantees
 
