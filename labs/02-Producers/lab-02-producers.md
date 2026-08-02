@@ -290,8 +290,25 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -De
 mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerThroughput -Dexec.args="20 zstd"
 ```
 
-Compare the `rec/s`. Typically `linger.ms=20` beats `0`, and `zstd` on top adds more —
-larger, compressed batches make far better use of the network.
+Compare the `rec/s`. `linger.ms=20` usually beats `0` — waiting a few milliseconds builds
+larger batches, and fewer, bigger requests cost less than many small ones.
+
+What `zstd` adds depends on where your bottleneck is, and on this setup it may well come out
+**slower**. Compression trades CPU for bytes on the wire: it pays when the network is the
+constraint, which is the normal case for a real cluster across a network. Here the broker is
+a container on your own machine, so there is barely any network to save and you are left
+paying the CPU cost. A sample run on the courseware laptop:
+
+```
+linger.ms=0   compression=none    33,058 rec/s
+linger.ms=20  compression=none    40,967 rec/s   <- batching wins
+linger.ms=20  compression=zstd    30,003 rec/s   <- compression loses, locally
+```
+
+Don't take those as the expected answer — take your own. The transferable lesson is that
+these are **measurements, not constants**: the same settings move in different directions
+depending on record size, hardware, and the distance to your brokers. Tune against your
+workload, not against a table in a slide deck.
 
 > **If a sharp student asks:** doesn't `linger.ms=20` add 20ms of latency to every record?
 > At most 20ms, and only when the batch isn't already full. Under load, batches fill before
@@ -346,8 +363,27 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.ar
 mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.args="all"
 ```
 
-`acks=0` is fastest and `acks=all` slowest, but on a healthy 3-broker cluster the gap is
-small — and only `acks=all` guarantees no loss if a broker fails mid-write.
+In theory `acks=0` is fastest and `acks=all` slowest, since `all` waits for the in-sync
+replicas to acknowledge. In practice, on a healthy 3-broker cluster on one machine, the gap
+is **small enough to disappear into the noise** — the three runs often land within a few
+tenths of a second of each other, and it is common for them to come out in the "wrong" order.
+A sample run on the courseware laptop:
+
+```
+acks=0   50000 records in 1.63s
+acks=1   50000 records in 1.32s
+acks=all 50000 records in 1.26s
+```
+
+That is not a broken cluster and not a broken benchmark — it is what "the gap is small" looks
+like when replication is three containers sharing a loopback interface and a page cache. If
+you want the difference to be visible, you have to make acknowledgement genuinely expensive:
+real brokers, real network, real disks.
+
+The durability point stands regardless of the timings, and it is the one that matters: only
+`acks=all` guarantees no loss if a broker fails mid-write. **Don't buy speed here.** You would
+be trading a few percent of throughput you probably can't even measure for the chance of
+silently losing acknowledged data.
 
 > **If a sharp student asks:** with `acks=all`, "all" means all *in-sync* replicas. If the
 > ISR shrinks to just the leader, "all" is one broker — which is why real durability also
