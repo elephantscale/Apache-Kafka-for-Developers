@@ -74,7 +74,7 @@ docker exec kafka-1 kafka-broker-api-versions.sh --bootstrap-server localhost:90
 That prints `3` — one line per reachable broker.
 
 *(Optional, Java)* To confirm the **host's own Java toolchain** — the one you'll use for every
-later lab — can reach the cluster, add this tiny program to the Maven project introduced in Lab 05
+later lab — can reach the cluster, add this tiny program to the Maven project you build in Lab 02
 (it needs only the `kafka-clients` dependency) and run it:
 
 ```java

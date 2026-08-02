@@ -259,8 +259,12 @@ public class AvroConsumerApp {
         ConsumerRecords<String, GenericRecord> records = consumer.poll(Duration.ofMillis(500));
         for (ConsumerRecord<String, GenericRecord> r : records) {
           GenericRecord v = r.value();
-          System.out.printf("P%d@%d  orderId=%s amount=%s%n",
-              r.partition(), r.offset(), v.get("orderId"), v.get("amount"));
+          // get() returns null for a field the record's own schema doesn't have,
+          // so this same consumer works against both v1 and v2 records (Exercise 4)
+          Object region = v.get("region");
+          System.out.printf("P%d@%d  orderId=%s amount=%s region=%s%n",
+              r.partition(), r.offset(), v.get("orderId"), v.get("amount"),
+              region == null ? "(absent)" : region);
         }
       }
     }
@@ -289,21 +293,56 @@ evolved data.
 Create a v2 producer that adds `region` with a default:
 
 ```java
-// src/main/java/com/elephantscale/kafka/AvroProducerV2App.java  (only the schema + put change)
-static final String SCHEMA_V2 = """
-  {
-    "type": "record",
-    "name": "Order",
-    "namespace": "com.elephantscale.kafka",
-    "fields": [
-      {"name": "orderId", "type": "int"},
-      {"name": "amount",  "type": "double"},
-      {"name": "region",  "type": "string", "default": "UNKNOWN"}
-    ]
+// src/main/java/com/elephantscale/kafka/AvroProducerV2App.java
+package com.elephantscale.kafka;
+
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
+
+public class AvroProducerV2App {
+  // identical to v1 except for the new "region" field -- note the default,
+  // which is what makes this a BACKWARD-compatible change
+  static final String SCHEMA_V2 = """
+    {
+      "type": "record",
+      "name": "Order",
+      "namespace": "com.elephantscale.kafka",
+      "fields": [
+        {"name": "orderId", "type": "int"},
+        {"name": "amount",  "type": "double"},
+        {"name": "region",  "type": "string", "default": "UNKNOWN"}
+      ]
+    }
+    """;
+
+  public static void main(String[] args) {
+    Properties p = new Properties();
+    p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+    p.put("schema.registry.url", "http://localhost:8081");
+
+    Schema schema = new Schema.Parser().parse(SCHEMA_V2);
+
+    try (Producer<String, GenericRecord> producer = new KafkaProducer<>(p)) {
+      for (int i = 5; i < 10; i++) {          // ids 5-9, so v1 and v2 records are easy to tell apart
+        GenericRecord order = new GenericData.Record(schema);
+        order.put("orderId", i);
+        order.put("amount", 10.0 * i);
+        order.put("region", "EAST");
+        producer.send(new ProducerRecord<>("lab05-orders", "key-" + i, order));
+        System.out.println("sent v2 orderId=" + i);
+      }
+      producer.flush();
+    }
+    System.out.println("done");
   }
-  """;
-// ... same producer config; parse SCHEMA_V2; and:
-//   order.put("region", "EAST");
+}
 ```
 
 Produce a few v2 records:
@@ -321,8 +360,14 @@ curl -s http://localhost:8081/subjects/lab05-orders-value/versions | jq .   # no
 ### 4.3 Prove old and new data both read
 
 Re-run the **Exercise 3 consumer** (unchanged, from `earliest`). It reads **all** records —
-the v1 orders (no `region`) deserialize fine, and the v2 orders carry `EAST`. Old data still
-works.
+the v1 orders print `region=(absent)` and the v2 orders print `region=EAST`. One consumer,
+two schema versions, no redeploy: old data still works.
+
+> **Worth saying out loud:** each record is decoded with the schema it was *written* with,
+> which the registry supplies by id. That's why a v1 record has no `region` at all here
+> rather than the `"UNKNOWN"` default. The default matters when a reader *asks* for v2 —
+> then Avro fills in `UNKNOWN` for records that predate the field. That's exactly the
+> guarantee BACKWARD compatibility gives you.
 
 > **If a sharp student asks:** why doesn't the v1 record break the v2-aware consumer? Avro
 > resolves the reader schema against the writer schema: the reader wants `region`, the v1 writer
