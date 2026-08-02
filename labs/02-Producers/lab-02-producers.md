@@ -294,21 +294,14 @@ Compare the `rec/s`. `linger.ms=20` usually beats `0` — waiting a few millisec
 larger batches, and fewer, bigger requests cost less than many small ones.
 
 What `zstd` adds depends on where your bottleneck is, and on this setup it may well come out
-**slower**. Compression trades CPU for bytes on the wire: it pays when the network is the
-constraint, which is the normal case for a real cluster across a network. Here the broker is
-a container on your own machine, so there is barely any network to save and you are left
-paying the CPU cost. A sample run on the courseware laptop:
+**slower** than no compression at all. Compression trades CPU for bytes on the wire: it pays
+when the network is the constraint, which is the normal case for a real cluster across a
+network. Here the broker is a container on your own machine, so there is barely any network
+to save and you are left paying the CPU cost.
 
-```
-linger.ms=0   compression=none    33,058 rec/s
-linger.ms=20  compression=none    40,967 rec/s   <- batching wins
-linger.ms=20  compression=zstd    30,003 rec/s   <- compression loses, locally
-```
-
-Don't take those as the expected answer — take your own. The transferable lesson is that
-these are **measurements, not constants**: the same settings move in different directions
-depending on record size, hardware, and the distance to your brokers. Tune against your
-workload, not against a table in a slide deck.
+So don't expect a fixed answer — take your own. These are **measurements, not constants**:
+the same settings move in different directions depending on record size, hardware, and the
+distance to your brokers. Tune against your workload, not against a table in a slide deck.
 
 > **If a sharp student asks:** doesn't `linger.ms=20` add 20ms of latency to every record?
 > At most 20ms, and only when the batch isn't already full. Under load, batches fill before
@@ -366,14 +359,8 @@ mvn -q exec:java -Dexec.mainClass=com.elephantscale.kafka.ProducerAcks -Dexec.ar
 In theory `acks=0` is fastest and `acks=all` slowest, since `all` waits for the in-sync
 replicas to acknowledge. In practice, on a healthy 3-broker cluster on one machine, the gap
 is **small enough to disappear into the noise** — the three runs often land within a few
-tenths of a second of each other, and it is common for them to come out in the "wrong" order.
-A sample run on the courseware laptop:
-
-```
-acks=0   50000 records in 1.63s
-acks=1   50000 records in 1.32s
-acks=all 50000 records in 1.26s
-```
+tenths of a second of each other, and it is common for them to come out in the "wrong" order —
+`acks=all` finishing first is a perfectly ordinary result here.
 
 That is not a broken cluster and not a broken benchmark — it is what "the gap is small" looks
 like when replication is three containers sharing a loopback interface and a page cache. If
