@@ -91,8 +91,8 @@ This is the tangle Kafka was built at LinkedIn to untangle.
   commercial steward of Kafka.
 - Full circle: LinkedIn today runs Kafka at roughly **7 trillion messages a day**.
 
-<img src="../images/Franz_Kafka,_1923.jpg" style="width:22%;"/> &nbsp;
-<img src="../images/kafka-metamorphosis-bug.jpg" style="width:30%;"/>
+<img src="../images/Franz_Kafka,_1923.jpg" width="22%"/> &nbsp;
+<img src="../images/kafka-metamorphosis-bug.jpg" width="30%"/>
 
 Notes:
 Worth 60 seconds — it makes the technology human and gives the N×M slide a real origin. The Metamorphosis joke lands with most rooms: the one book everyone half-remembers from school, and here it is running your payments.
