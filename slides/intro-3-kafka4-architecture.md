@@ -10,6 +10,9 @@ Elephant Scale
 - **KRaft** — ZooKeeper-free Kafka (what changed and why it matters)
 - The Kafka ecosystem: Connect, Streams, Schema Registry, Flink
 
+Notes:
+~1 min, but open by answering 'why does a developer care?' — you will read --describe output during an incident, you will be told the controller failed over, and you will find tutorials telling you to pass --zookeeper. This module is so none of that is mysterious.
+
 ---
 
 ## The Cluster: A Set of Brokers
@@ -50,6 +53,9 @@ what topics exist. That job is the **controller**.
 
 The interesting question is: **where is that metadata stored, and how is it kept
 consistent?** That's exactly what changed in Kafka 4.
+
+Notes:
+4-5 min. The controller handles METADATA, not your produce/consume traffic — say that explicitly, because the natural assumption is that it is in the data path.
 
 ---
 
@@ -119,6 +125,9 @@ The elegant part: Kafka applies its **own** core idea — the log — to metadat
 This is why KRaft scales: propagating metadata is now the same fast, log-based
 mechanism Kafka already does extremely well.
 
+Notes:
+5-6 min and the elegant idea of the module: Kafka already had a battle-tested replicated log, so it stopped outsourcing consensus to ZooKeeper and used its own. If they get this, 'why is ZooKeeper gone' answers itself.
+
 ---
 
 ## Roles: Broker and Controller
@@ -157,6 +166,9 @@ You won't administer the controller quorum, but KRaft changes things you'll feel
 **Practical upshot:** if you read an older tutorial that mentions ZooKeeper, `zookeeper.connect`,
 or `--zookeeper` flags — it's out of date. Kafka 4 is ZooKeeper-free.
 
+Notes:
+3 min. Be honest that the practical developer takeaway is small: you will never configure ZooKeeper, and every --zookeeper flag you find online is obsolete. That honesty buys credibility for the rest.
+
 ---
 
 ## Kafka Is More Than Brokers: The Ecosystem
@@ -176,6 +188,9 @@ which is where developers spend most of their time.
 Each of these is a module later in the course. Here's the one-line orientation for
 each.
 
+Notes:
+60 seconds. Signpost only. Each of these gets a full module AND a lab later in the week.
+
 ---
 
 ## Kafka Connect
@@ -188,6 +203,9 @@ each.
 - Handles scaling, offset tracking, retries, and dead-letter queues for you
 
 *→ Module 9 (Kafka Connect), with a hands-on source + sink + DLQ lab.*
+
+Notes:
+60 seconds: move data in and out without writing client code. Full module and lab on Thursday. Resist the urge to preview connectors.
 
 ---
 
@@ -202,6 +220,9 @@ each.
 
 *→ Module 8 (Serialization & Schema Registry), with an Avro evolve-a-schema lab.*
 
+Notes:
+60 seconds: producers and consumers agree on the shape of the data. Full module and lab on Thursday.
+
 ---
 
 ## Stream Processing: Kafka Streams & Flink
@@ -215,6 +236,9 @@ each.
 - Both read from Kafka topics, process continuously, and write results back to Kafka
 
 *→ Module 10 (Stream Processing), with a stateful streaming lab.*
+
+Notes:
+60-90 seconds: process the stream in motion — aggregate, join, window. Full module and lab on Friday. If asked which to use, defer: 'that is a whole slide on Friday.'
 
 ---
 
@@ -235,6 +259,9 @@ each.
 - **Connect** at the edges, **Schema Registry** for contracts, **Streams/Flink** for processing
 - You'll write code against all of it — starting hands-on in the **next module**
 
+Notes:
+2-3 min. This is the map of the week — point at each box and name the day it happens. Good moment to check energy before the lab block.
+
 ---
 
 ## Summary
@@ -245,3 +272,7 @@ each.
 - Nodes run as **broker**, **controller**, or (in dev) **both** — our lab uses 3 combined nodes
 - The **ecosystem** — Connect, Schema Registry, Streams/Flink — is where developers live; each has its own module
 - Next: **hands-on** — start the cluster, create topics, produce and consume
+
+Notes:
+2 min. Kafka 4 is KRaft-only; metadata lives in a Kafka log managed by a controller quorum; the ecosystem around the brokers is where the rest of the week lives. Then: 'enough architecture — let's use it.'
+
