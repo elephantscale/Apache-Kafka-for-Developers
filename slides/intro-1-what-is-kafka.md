@@ -13,6 +13,9 @@ Elephant Scale
 - Where Kafka fits: the modern data platform
 - Streaming-first design and common enterprise EDA patterns
 
+Notes:
+Before the agenda, run the hook: ask who still has an overnight batch job, then who has been asked for that same thing in real time. That gap IS the course. ~2 min on this slide, but the hook is worth 5.
+
 ---
 
 ## The World Got Faster Than Batch
@@ -33,7 +36,7 @@ That was fine when the business ran on a daily cycle. It is not fine when:
 The world moved to **events that must be reacted to as they happen**. Batch can't do that.
 
 Notes:
-Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example.
+Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example. Write two or three on the board and REUSE THEM ALL WEEK in place of generic orders/payments; it turns the most lecture-heavy hour of the course into a conversation. Budget 5-8 min, most of it theirs.
 
 ---
 
@@ -50,6 +53,9 @@ Anchor this in the students' own systems — ask what runs as a nightly job toda
 Streaming doesn't replace batch everywhere — it adds the ability to act on data
 **while it is still fresh**. Kafka is the platform that makes streaming practical
 at scale.
+
+Notes:
+Read the table quickly — it is reference, not revelation. ~3 min. Better use of the time: ask which row surprises them, or which of their own jobs could move from the left column to the right.
 
 ---
 
@@ -75,6 +81,9 @@ to every system that needs it:
 - **N** producers × **M** consumers = an unmaintainable web of integrations
 
 This is the tangle Kafka was built at LinkedIn to untangle.
+
+Notes:
+The centre of gravity of this module — 10-12 min, and build it on the whiteboard rather than showing the finished diagram. Draw Orders to Fraud. Fine. Now Orders to Email. Now Payments to Fraud, Payments to Ledger. Then ask: 'we have just been asked to add a recommendation service that needs both — how many teams do I have to talk to?' Let them feel the combinatorics before the term N×M appears.
 
 ---
 
@@ -119,6 +128,9 @@ independently, at their own pace.
 
 **Decoupling** is the core idea. Everything else is detail.
 
+Notes:
+The turn, and the emotional payoff of the previous slide — 8-10 min. Tie each bullet to a pain they just felt: no new plumbing, no producer changes, no back-pressure from a slow consumer. The line to land: 'the producer no longer knows who its consumers are, and that ignorance is the feature.'
+
 ---
 
 ## What Kafka Actually Is
@@ -151,6 +163,9 @@ An **event** is a fact that already happened: *"Order 1234 was placed at 10:02."
 
 Event-driven systems are built by **producing** these facts and letting any number
 of interested parties **react** — without the producer orchestrating them.
+
+Notes:
+~4 min. Make it concrete with their own domain: ask someone to name three events their system would emit, in past tense. Naming things OrderPlaced rather than createOrder is where the mental shift actually happens.
 
 ---
 
@@ -194,6 +209,9 @@ Both patterns coexist in real systems. The point isn't "REST is bad" — it's th
 - **Stream processing** — fraud detection, alerting, enrichment, feature computation on data
   in motion
 - **ML feature stores** — feed models with fresh, real-time features
+
+Notes:
+Don't read the list — 5 min, spent asking which of these they already have and which they wish they had. Their answers tell you where to aim examples for the rest of the week. If the room is quiet, offer your own: 'anyone doing fraud or alerting?'
 
 ---
 
@@ -243,6 +261,9 @@ Kafka usually sits in the **center**, as the pipe that everything flows through:
 - **Schema Registry** keeps producers and consumers agreeing on data shape
 
 We'll meet each of these in this course.
+
+Notes:
+60 seconds. This is a signpost for the week, not a topic: Connect moves data in and out, Streams/Flink process it in motion, Schema Registry keeps everyone agreeing on shape. Each gets its own module and its own lab. Resist previewing them.
 
 ---
 
@@ -305,6 +326,9 @@ For the rest of this course, hold onto this:
 Next module: the **core concepts** that make this log work — topics, partitions,
 offsets, and consumer groups.
 
+Notes:
+~3 min. Ask them to say the one-sentence version back to you before you show the bullets — 'what is Kafka, in one sentence?' If the answer is 'a message queue', you have found the misconception to correct before Module 2 and you have time to do it.
+
 ---
 
 ## Summary
@@ -316,3 +340,7 @@ offsets, and consumer groups.
 - **Streaming-first** design treats events, not database rows, as the source of truth
 - Patterns to recognize: **Event Sourcing, CQRS, Saga, CDC, fan-out**
 - Kafka is the **de facto standard** for event streaming and the hub of the modern data platform
+
+Notes:
+2 min. If the room remembers one sentence from this module it should be 'Kafka is a durable, replayable log — not a queue that deletes on read.' Say it, then transition: one log serving thousands of clients is the partition story, which is the next module.
+
