@@ -65,7 +65,7 @@ Notes:
 
 ## Lots of Labs: Learn By Doing
 
-<img src="../images/any-key.png" style="width:50%;"/>
+<img src="../images/any-key.png" width="50%"/>
 
 Notes:
 Every concept is reinforced with a lab. All slides, labs, and code are yours to keep in a Git repository — re-run the exercises after the course.
@@ -74,13 +74,13 @@ Every concept is reinforced with a lab. All slides, labs, and code are yours to 
 
 ## Analogy: Learning To Fly...
 
-<img src="../images/learn-to-fly.png" style="width:80%;"/>
+<img src="../images/learn-to-fly.png" width="80%"/>
 
 ---
 
 ## Introductions
 
-<img src="../images/classroom-instruction.png" style="width:70%;"/>
+<img src="../images/classroom-instruction.png" width="70%"/>
 
 Notes:
 
@@ -88,13 +88,13 @@ Notes:
 
 ## + Flight Time
 
-<img src="../images/cockpit.png" style="width:70%;"/>
+<img src="../images/cockpit.png" width="70%"/>
 
 ---
 
 ## This Will Take A Lot Of Practice
 
-<img src="../images/practice.png" style="width:70%;"/>
+<img src="../images/practice.png" width="70%"/>
 
 ---
 
@@ -128,8 +128,8 @@ Notes:
     - Kafka experience (scale of 1 - 4 ;  1 - new,   4 - expert)
     - Something non-technical about you! (favorite ice cream flavor / hobby...)
 
-<img src="../images/hiking-3.jpg" style="width:18%;"/> &nbsp;
-<img src="../images/ice-cream-3.png" style="width:25%;"/> &nbsp;
-<img src="../images/biking-1.jpg" style="width:18%;"/> &nbsp;
+<img src="../images/hiking-3.jpg" width="18%"/> &nbsp;
+<img src="../images/ice-cream-3.png" width="25%"/> &nbsp;
+<img src="../images/biking-1.jpg" width="18%"/> &nbsp;
 
 ---
