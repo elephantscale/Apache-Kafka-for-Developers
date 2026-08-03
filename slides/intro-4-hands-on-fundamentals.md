@@ -11,6 +11,9 @@ Elephant Scale
 - Produce and consume events from the command line
 - Observe consumer-group partition assignment and lag
 
+Notes:
+~1 min. Frame it: this module is a preview of the exact commands they are about to run. Do not demo everything, or the lab becomes re-typing.
+
 ---
 
 ## From Concepts to Keyboard
@@ -49,6 +52,9 @@ Our environment is the three-broker KRaft cluster from Module 3, as Docker conta
 - Bring it up: `docker compose up -d`
 - The Kafka CLI tools live **inside** the broker containers — no JDK on your host
 - Run them with `docker exec kafka-1 <tool>.sh …`
+
+Notes:
+3-4 min. Worth being explicit: three brokers as Docker containers, CLI tools run INSIDE them via docker exec, and their own Java code runs on the host. That split confuses people all week if you skip it now.
 
 ---
 
@@ -113,6 +119,9 @@ Topic: orders  PartitionCount: 3  ReplicationFactor: 3
 - **Replicas** — all brokers holding a copy
 - **Isr** — the in-sync replicas (all 3 = fully healthy)
 
+Notes:
+5-6 min — the highest-value slide in the module. Everything they learned as a diagram in Core Concepts is visible in this output. Read a real --describe line aloud, column by column. Note the Leader column is authoritative; Replicas just lists the preferred leader first.
+
 ---
 
 ## Producing and Consuming
@@ -133,6 +142,9 @@ docker exec kafka-1 kafka-console-consumer.sh \
 
 - `--from-beginning` reads the whole log; omit it to read only new events
 - Type in terminal 1, watch it appear in terminal 2 — the log in action
+
+Notes:
+4 min. Warn them here about the two things that will happen: forgetting --from-beginning and seeing nothing, and the TimeoutException on exit being EXPECTED (that is --timeout-ms doing its job, not an error).
 
 ---
 
@@ -182,6 +194,9 @@ billing  orders  1          40              45              5    consumer-1-...
 ```
 
 **LAG = LOG-END-OFFSET − CURRENT-OFFSET** — the single most useful health number in Kafka.
+
+Notes:
+5 min. Lag = log-end offset minus committed offset, per partition. Tell them this is the one metric they will monitor for the rest of their careers with Kafka — it comes back properly in Module 11 and the capstone.
 
 ---
 
@@ -248,3 +263,7 @@ Ask, don't tell — let students answer. This is the checkpoint that reveals who
 - **Keys** decide partitioning and preserve per-key order
 - A **consumer group** shares partitions; **lag = end-offset − current-offset** is the key metric
 - Adding consumers triggers an automatic **rebalance**, up to the partition ceiling
+
+Notes:
+2 min, then straight into the lab. Tell them to arrange their terminals BEFORE Exercise 5 — it needs up to six, and people who start hunting for windows mid-rebalance miss the moment.
+

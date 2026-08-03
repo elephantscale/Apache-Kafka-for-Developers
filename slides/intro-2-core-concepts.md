@@ -12,6 +12,9 @@ Elephant Scale
 - Replication, leaders, and fault tolerance (ISR) at a high level
 - Retention: time, size, and log compaction
 
+Notes:
+~1 min. Say the through-line before the list: every concept in this module is a consequence of one design choice — the topic is an append-only log. Partitions, offsets, keys, groups and replication all fall out of it.
+
 ---
 
 ## The One Idea: A Topic Is a Log
@@ -61,6 +64,9 @@ topic "orders" with 3 partitions
 
 **Key trade-off:** ordering is guaranteed **within a partition**, never across partitions.
 
+Notes:
+6-8 min, and ask before you tell. Put up the one-log picture, ask 'what breaks first?' (one machine, one disk), split it — then the key question: 'what did we just LOSE?' Wait for someone to say global ordering. They will, and they own it from then on.
+
 ---
 
 ## Offsets — A Message's Address
@@ -106,6 +112,9 @@ How does a producer decide which partition an event goes to? By the **message ke
 per-entity ordering (per user, per order, per device); go keyless when you just
 want even spread.
 
+Notes:
+The most consequential slide of the day — 12-15 min. This is the decision they make in every producer they ever write. Use their own examples: 'what would you key Priya's reconciliation stream by — account, branch, or batch id?' Name the two traps: hot partitions (one whale key takes 40% of the load however many partitions you add), and that adding partitions rehashes key->partition for NEW data, breaking per-key ordering across the boundary. You cannot decrease partitions.
+
 ---
 
 ## Producers, Consumers, Brokers
@@ -127,6 +136,9 @@ Three roles make up the system:
 
 Producers and consumers are **your code** (Java in this course). Brokers are the
 Kafka cluster — for us, three Docker containers.
+
+Notes:
+3 min, mostly vocabulary. The one point worth making: producers and consumers are YOUR code, brokers are the cluster. In this course that means Java on your laptop and three Docker containers.
 
 ---
 
@@ -194,6 +206,9 @@ The number of **partitions** caps the parallelism of a single consumer group.
 **Rule of thumb:** choose partition count for the parallelism you'll eventually
 need — it's easy to add partitions, awkward to remove them.
 
+Notes:
+5-6 min. Ask 'so how far can I scale this group?' before revealing the answer, then let the idle 4th consumer land. They will prove it themselves in Lab 01 Ex 5.5 and again in Lab 08. The consequence to state plainly: partition count is a capacity decision you make UP FRONT.
+
 ---
 
 ## Same Data, Many Consumers: Different Groups
@@ -214,6 +229,9 @@ topic "orders"
 
 This is how one topic feeds many independent applications at once.
 
+Notes:
+4-5 min, and draw it even though the slide has a diagram. The single most persistent confusion in the course is 'if another team reads this topic, do they steal my messages?' Two groups, same topic, both get everything. Get this wrong on Day 1 and it costs an hour on Day 2.
+
 ---
 
 ## Replication — Surviving Broker Failure
@@ -232,6 +250,9 @@ partition "orders-0", RF=3
    broker 3:  follower  ── replicates from leader
         (broker 1 dies → broker 2 becomes leader)
 ```
+
+Notes:
+4 min. Keep it at the 'how many copies survive how many failures' level — the durability CONTRACT (acks + min.insync.replicas) is Module 5 and Module 11. Resist going deep; you will teach it properly twice more.
 
 ---
 
@@ -270,6 +291,9 @@ how long events stay before deletion.
      deleted                  still readable (replayable)
 ```
 
+Notes:
+3 min. The point that matters: retention is time or size based, INDEPENDENT of whether anyone read the data. This is the last chance to kill the 'reading deletes it' misconception before the lab.
+
 ---
 
 ## Log Compaction — Keep the Latest per Key
@@ -304,6 +328,9 @@ Compaction underpins Kafka Streams' KTables and Connect's offset storage. Introd
 Next module: how these pieces are arranged into a **Kafka 4 cluster**, and how
 **KRaft** replaced ZooKeeper.
 
+Notes:
+3-4 min. Rather than narrating the diagram, ask the room to walk it: 'a record is produced with key user-42 — tell me where it goes and who can read it.' If they can narrate it, the module worked.
+
 ---
 
 ## Summary
@@ -313,3 +340,7 @@ Next module: how these pieces are arranged into a **Kafka 4 cluster**, and how
 - **consumer group** scales reads; **partitions cap** the parallelism
 - **replication + ISR** provide fault tolerance
 - **retention** (time/size) and **compaction** (latest-per-key) govern the log's lifetime
+
+Notes:
+2 min. The sentence to leave them with: ordering is guaranteed within a partition, never across — and the key decides the partition. Then transition to architecture: 'that is what Kafka does; next is what is actually running when you start it.'
+
