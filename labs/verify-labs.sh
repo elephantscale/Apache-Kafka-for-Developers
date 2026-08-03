@@ -30,10 +30,17 @@ done
 
 G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; B=$'\033[1m'; N=$'\033[0m'
 PASS=0; FAIL=0
-section() { printf "\n${B}%s${N}\n" "$1"; }
-ok()   { printf "  ${G}PASS${N}  %s\n" "$1"; PASS=$((PASS+1)); }
-bad()  { printf "  ${R}FAIL${N}  %s\n" "$1"; FAIL=$((FAIL+1)); }
-info() { printf "  ${Y}··${N}    %s\n" "$1"; }
+
+# A copy of every result also goes here, so the run can be shared without
+# copy/paste from the VM: commit the file and push, or screenshot the tail.
+REPORT="$(cd "$(dirname "$0")/.." && pwd)/labs/verify-labs-report.txt"
+: > "$REPORT"
+log() { printf '%s\n' "$1" >> "$REPORT"; }
+
+section() { printf "\n${B}%s${N}\n" "$1"; log ""; log "$1"; }
+ok()   { printf "  ${G}PASS${N}  %s\n" "$1"; log "  PASS  $1"; PASS=$((PASS+1)); }
+bad()  { printf "  ${R}FAIL${N}  %s\n" "$1"; log "  FAIL  $1"; FAIL=$((FAIL+1)); }
+info() { printf "  ${Y}··${N}    %s\n" "$1"; log "  ..    $1"; }
 
 # assert <description> <expected> <actual>
 assert_eq() {
@@ -176,6 +183,7 @@ assert_contains "v2 records carry the new field"      "region=EAST"     "$out"
 if [ "$ALL" = "0" ]; then
   section "Summary"
   printf "  %d passed, %d failed\n" "$PASS" "$FAIL"
+  log "  $PASS passed, $FAIL failed"
   info "Labs 06-08 skipped — re-run with --all to include Connect, Flink and the capstone"
   if [ "$KEEP" = "1" ] || [ "${SKIP_COMPOSE:-0}" = "1" ]; then
     info "cluster left running"
@@ -265,6 +273,13 @@ assert_eq "no acknowledged records lost" "200" "$tot"
 
 section "Summary"
 printf "  %d passed, %d failed\n" "$PASS" "$FAIL"
+log "  $PASS passed, $FAIL failed"
+if [ "$FAIL" -gt 0 ]; then
+  printf "\n${B}Failures only (screenshot this):${N}\n"
+  grep "^  FAIL" "$REPORT"
+fi
+printf "\n  full report written to %s\n" "${REPORT#$REPO/}"
+printf "  to share it:  git add -A && git commit -m verify && git push\n"
 if [ "$KEEP" = "1" ] || [ "${SKIP_COMPOSE:-0}" = "1" ]; then
   info "cluster left running"
 else
