@@ -218,9 +218,19 @@ __marimo__/
 .streamlit/secrets.toml
 
 # --- Course: generated slide build artifacts (md → pptx pipeline) ---
+# Intermediate build output is disposable; slides/release/ is NOT -- it holds the
+# delivered decks and is committed on purpose.
 **/assembly.out*/
-slides/release/
 *.pptx
+!slides/release/**/*.pptx
+
+# --- OS cruft ---
+.DS_Store
+
+# --- Lab scratch: students (and verify-labs.sh) write .java here; the guides are
+#     the source of truth for that code, so don't track copies of it ---
+labs/kafka-labs/src/main/java/com/elephantscale/kafka/*.java
+labs/kafka-labs/target/
 
 # --- Course: local working notes / drafts (kept in-repo, not committed) ---
 drafts/
