@@ -16,6 +16,10 @@ By the end of this lab you will be able to:
 - Produce and consume events from the command line, with and without keys
 - Run a consumer group, add a second member, and read partition assignment and **lag**
 
+> **Run in two sittings.** This lab is often split: **Exercises 1–2** after the *Core Concepts*
+> module, **Exercises 3–5** after *Hands-On Fundamentals*. There's a marked pause point between
+> them. Working on your own? Ignore the marker and run straight through.
+
 ## Prerequisites
 
 - The lab environment set up per [`labs/SETUP.md`](../SETUP.md) (Docker + Compose v2; JDK 17 +
@@ -166,6 +170,17 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 
 This **fails** — you can't have 4 copies on 3 brokers. Read the error; it's a common
 real-world mistake. (No cleanup needed; the topic was not created.)
+
+---
+
+> ## ⏸ Pause here if your instructor asked you to
+>
+> Exercises 1–2 are often run **straight after the Core Concepts module**, so you can see
+> partitions, replicas, leaders, and the ISR on your own screen while they're fresh. The rest
+> of the lab follows the Hands-On Fundamentals module.
+>
+> **Leave the cluster running** — Exercises 3–5 continue with the `orders` topic you just
+> created. Working through the lab on your own? Just carry straight on.
 
 ---
 
