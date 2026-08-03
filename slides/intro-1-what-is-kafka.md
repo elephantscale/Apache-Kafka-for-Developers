@@ -36,7 +36,7 @@ That was fine when the business ran on a daily cycle. It is not fine when:
 The world moved to **events that must be reacted to as they happen**. Batch can't do that.
 
 Notes:
-Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example. Write two or three on the board and REUSE THEM ALL WEEK in place of generic orders/payments; it turns the most lecture-heavy hour of the course into a conversation. Budget 5-8 min, most of it theirs.
+Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example. Capture two or three by name ('Priya's reconciliation job') on a persistent OmniGraffle canvas you keep open all week, and REUSE THEM in place of generic orders/payments; it turns the most lecture-heavy hour of the course into a conversation. If the room is cold, seed it with three plausible jobs from their industry — recognition is easier than generation. Budget 5-8 min, most of it theirs.
 
 ---
 
@@ -83,7 +83,7 @@ to every system that needs it:
 This is the tangle Kafka was built at LinkedIn to untangle.
 
 Notes:
-The centre of gravity of this module — 10-12 min, and build it on the whiteboard rather than showing the finished diagram. Draw Orders to Fraud. Fine. Now Orders to Email. Now Payments to Fraud, Payments to Ledger. Then ask: 'we have just been asked to add a recommendation service that needs both — how many teams do I have to talk to?' Let them feel the combinatorics before the term N×M appears.
+The centre of gravity of this module — 10-12 min, and draw it live rather than showing the finished diagram. In OmniGraffle: keep the boxes pre-made off-canvas and drag them in as you talk, and put the tangle and the Kafka-in-the-middle version on two LAYERS so the turn is one toggle. Orders to Fraud. Fine. Now Orders to Email. Now Payments to Fraud, Payments to Ledger. Then ask: 'we have just been asked to add a recommendation service that needs both — how many teams do I have to talk to?' Let them feel the combinatorics before the term N×M appears.
 
 ---
 
