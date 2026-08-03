@@ -96,7 +96,6 @@ for md in sorted((repo/"labs").glob("0*/lab-*.md")):
         m = re.search(r"public class (\w+)", block)
         if m and "static void main" in block:
             (out/f"{m.group(1)}.java").write_text(block); n += 1
-print(n)
 PY
 count=$(ls "$SRC"/*.java 2>/dev/null | wc -l | tr -d ' ')
 info "extracted $count classes from the lab guides"
