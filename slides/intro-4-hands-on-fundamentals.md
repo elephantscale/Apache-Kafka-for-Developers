@@ -26,7 +26,8 @@ The last three modules were the mental model. Now we make it real.
 **Goal:** by the end you can start a cluster, create a topic, move events through it,
 and read consumer lag — confidently.
 
-Notes: Keep laptops open. This module is meant to be run along with, not watched. Every command here reappears in Lab 01.
+Notes:
+Keep laptops open. This module is meant to be run along with, not watched. Every command here reappears in Lab 01.
 
 ---
 
@@ -67,7 +68,8 @@ All ship inside the broker image, all take `--bootstrap-server localhost:9092`.
 docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
 
-Notes: `docker exec -i` (interactive) is needed for the console producer so it can read your keystrokes. The consumer is fine without `-i`.
+Notes:
+`docker exec -i` (interactive) is needed for the console producer so it can read your keystrokes. The consumer is fine without `-i`.
 
 ---
 
@@ -86,7 +88,8 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 - `--replication-factor 3` → three copies across our three brokers → survives a broker loss
 - RF can't exceed the number of brokers (3 here)
 
-Notes: This is the one decision students most often get wrong later — partitions for parallelism, replication for durability. They are independent knobs.
+Notes:
+This is the one decision students most often get wrong later — partitions for parallelism, replication for durability. They are independent knobs.
 
 ---
 
@@ -152,7 +155,8 @@ user-2:placed order C
 - Same key → same partition → guaranteed order for that entity
 - `--property print.key=true` on the consumer shows the key alongside the value
 
-Notes: This is the concept from Module 2 you can now prove: consume with `print.partition=true` and show that both `user-1` events share a partition.
+Notes:
+This is the concept from Module 2 you can now prove: consume with `print.partition=true` and show that both `user-1` events share a partition.
 
 ---
 
@@ -196,7 +200,8 @@ Start a **second** consumer in the same group and watch partitions redistribute.
 - A 4th consumer would sit **idle** (only 3 partitions) — the ceiling from Module 2
 - `--describe` again shows the new `CONSUMER-ID` per partition
 
-Notes: This is the payoff slide — the whole consumer-group scaling story from Module 2, demonstrated live in 30 seconds.
+Notes:
+This is the payoff slide — the whole consumer-group scaling story from Module 2, demonstrated live in 30 seconds.
 
 ---
 
@@ -213,7 +218,8 @@ Notes: This is the payoff slide — the whole consumer-group scaling story from 
 
 Environment: 3-broker KRaft cluster via Docker Compose · **~45 minutes**
 
-Notes: Circulate rather than presenting. The two places people get stuck are Docker not being up and a consumer that looks "broken" when it is simply idle at the end of the log.
+Notes:
+Circulate rather than presenting. The two places people get stuck are Docker not being up and a consumer that looks "broken" when it is simply idle at the end of the log.
 
 ---
 
@@ -229,7 +235,8 @@ Welcome back. Before we move on, let's connect the lab to the concepts:
 > These four questions are the whole intro day in miniature. If all four have clean
 > answers, you're ready for the intermediate material.
 
-Notes: Ask, don't tell — let students answer. This is the checkpoint that reveals who is genuinely following before the pace increases tomorrow. If the room is quiet on the 4th-consumer question, re-draw the partition-ceiling diagram.
+Notes:
+Ask, don't tell — let students answer. This is the checkpoint that reveals who is genuinely following before the pace increases tomorrow. If the room is quiet on the 4th-consumer question, re-draw the partition-ceiling diagram.
 
 ---
 

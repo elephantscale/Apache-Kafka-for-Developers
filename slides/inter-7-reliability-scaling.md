@@ -28,7 +28,8 @@ You won't administer the cluster — but as a developer you own the reliability 
 *(Deep cluster administration — provisioning, security, upgrades, capacity — is a separate
 administration course. Here we stay on the developer's side of the line.)*
 
-Notes: Set the boundary explicitly. This keeps the module developer-relevant and avoids drifting
+Notes:
+Set the boundary explicitly. This keeps the module developer-relevant and avoids drifting
 into admin territory that belongs in the ops course.
 
 ---
@@ -67,7 +68,8 @@ degraded: ISR = {1}       acks=all waits for 1   ✗ "durable" = one copy!
 - The trade-off: with RF 3 and min-ISR 2, you can lose **one** broker and keep writing; lose two
   and writes stop (correctly — you'd rather stop than lose data)
 
-Notes: This is the single most important reliability setting developers get wrong. acks=all is
+Notes:
+This is the single most important reliability setting developers get wrong. acks=all is
 half the contract; min.insync.replicas is the other half.
 
 ---
@@ -108,7 +110,8 @@ LAG = LOG-END-OFFSET (latest produced) − CURRENT-OFFSET (committed by the grou
 P0 lag=0     P1 lag=0     P2 lag=50000   ← investigate P2 / its consumer
 ```
 
-Notes: This is the SSA-stated concern. Lag is the heartbeat of a streaming app — everything else
+Notes:
+This is the SSA-stated concern. Lag is the heartbeat of a streaming app — everything else
 is secondary diagnosis once lag tells you something is wrong.
 
 ---
@@ -151,7 +154,8 @@ Rising lag has two shapes — diagnose which:
   → a 4th consumer sits idle (partition ceiling)
 ```
 
-Notes: This is the practical runbook. "Producer lag" (their phrase) usually means producer-side
+Notes:
+This is the practical runbook. "Producer lag" (their phrase) usually means producer-side
 latency/backpressure — buffer full, linger, acks — diagnosed on the producer, not the group.
 
 ---
@@ -185,7 +189,8 @@ Levers on the read side:
 **Common failure:** slow per-record processing blows past `max.poll.interval.ms` → rebalance
 storm → lag spikes. Fix by processing smaller batches or moving work off the poll thread.
 
-Notes: The max.poll.interval rebalance trap is one of the most common real-world Kafka bugs —
+Notes:
+The max.poll.interval rebalance trap is one of the most common real-world Kafka bugs —
 call it out explicitly. It ties their "issues" and "lag" concerns together.
 
 ---
@@ -225,7 +230,8 @@ A developer's quick triage list (their "issues" concern):
   `read_committed`)
 - **Uneven partition load** → poor key choice (a hot key); rethink the partition key
 
-Notes: This slide directly answers "issues, performance, configurations." It's a mini-runbook —
+Notes:
+This slide directly answers "issues, performance, configurations." It's a mini-runbook —
 consider printing it as a takeaway card.
 
 ---

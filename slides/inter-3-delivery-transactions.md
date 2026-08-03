@@ -28,7 +28,8 @@ delivered/processed:
   transactions**
 - We've already met the first two; this module builds the third
 
-Notes: Emphasize that "exactly-once" is the hardest and most misunderstood. Half this module is defining precisely what it does and doesn't mean.
+Notes:
+Emphasize that "exactly-once" is the hardest and most misunderstood. Half this module is defining precisely what it does and doesn't mean.
 
 ---
 
@@ -104,7 +105,8 @@ producer.initTransactions();                                         // once, at
   can no longer commit, so a hung-then-recovered process can't corrupt output
 - Must be **stable per logical processor** and **unique per instance** in a parallel deployment
 
-Notes: The transactional.id + fencing is what makes exactly-once safe under the nastiest
+Notes:
+The transactional.id + fencing is what makes exactly-once safe under the nastiest
 failure — a process that froze, was replaced, then woke up. The zombie can't commit.
 
 ---
@@ -141,7 +143,8 @@ while (running) {
   transaction**
 - Output records and the input-offset advance are now **one atomic fact**
 
-Notes: Two details students get wrong. (1) It's `r.offset() + 1` — you commit the *next* offset to read, not the last one processed; committing `r.offset()` re-delivers the last record forever. (2) Not every exception should be aborted: `ProducerFencedException`, `OutOfOrderSequenceException`, and authorization errors are **fatal** — a newer instance has taken your `transactional.id`, so you must `close()` the producer and exit, not abort and retry.
+Notes:
+Two details students get wrong. (1) It's `r.offset() + 1` — you commit the *next* offset to read, not the last one processed; committing `r.offset()` re-delivers the last record forever. (2) Not every exception should be aborted: `ProducerFencedException`, `OutOfOrderSequenceException`, and authorization errors are **fatal** — a newer instance has taken your `transactional.id`, so you must `close()` the producer and exit, not abort and retry.
 
 ---
 
@@ -184,7 +187,8 @@ read_committed sees:   A       B                                       D
 - An **open** transaction holds the reader at the **Last Stable Offset** until it commits or
   aborts — a stuck transaction can add latency (a reason to keep transactions short)
 
-Notes: This is why exactly-once isn't "free" — read_committed trades a little latency for
+Notes:
+This is why exactly-once isn't "free" — read_committed trades a little latency for
 correctness. Keep transactions small and fast.
 
 ---
@@ -220,7 +224,8 @@ cheaper / faster ─────────────────────
  at-most-once     at-least-once     exactly-once
 ```
 
-Notes: Most students will reach for exactly-once reflexively. Push back: at-least-once +
+Notes:
+Most students will reach for exactly-once reflexively. Push back: at-least-once +
 idempotency covers the majority of real systems at lower cost and complexity.
 
 ---

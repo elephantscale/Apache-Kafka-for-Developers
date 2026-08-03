@@ -31,7 +31,8 @@ Kafka  ──►  10101110...  ──deserialize──►  {claimId: 42, amount:
 
 That contract is a **schema**, and the Schema Registry is where it lives.
 
-Notes: Tie this straight to their world — multiple systems sharing appointment/claim events. Informal agreement breaks the first time one team changes a field.
+Notes:
+Tie this straight to their world — multiple systems sharing appointment/claim events. Informal agreement breaks the first time one team changes a field.
 
 ---
 
@@ -89,7 +90,8 @@ props.put("specific.avro.reader", "true");   // deserialize into generated class
 - The deserializer reads the ID, fetches/caches the schema, and decodes
 - Your business code sees **objects**, not bytes
 
-Notes: The magic is that "schema management" becomes two config lines plus a serde. Students should see it's not extra plumbing they maintain.
+Notes:
+The magic is that "schema management" becomes two config lines plus a serde. Students should see it's not extra plumbing they maintain.
 
 ---
 
@@ -126,7 +128,8 @@ Two directions to reason about:
 Because Kafka **retains** the log, a topic can hold **old and new versions at once** — a
 consumer replaying history will meet both. So evolution isn't optional; it's the normal state.
 
-Notes: Callback to Intro 2 retention: the log holds mixed versions. This is exactly the SSA "when do we upgrade" question — it's really "which compatibility mode."
+Notes:
+Callback to Intro 2 retention: the log holds mixed versions. This is exactly the SSA "when do we upgrade" question — it's really "which compatibility mode."
 
 ---
 
@@ -145,7 +148,8 @@ The subject's mode defines what changes are allowed and who can upgrade first.
 - **FORWARD** when producers must move first and old consumers must tolerate new data
 - **FULL** for the strictest cross-team contracts
 
-Notes: The "who upgrades first" column is the practical takeaway. Match the mode to your rollout order — this directly answers their upgrade-timing concern.
+Notes:
+The "who upgrades first" column is the practical takeaway. Match the mode to your rollout order — this directly answers their upgrade-timing concern.
 
 ---
 
@@ -178,7 +182,8 @@ systems sharing events, it's how teams stay coordinated **without** a change-con
 
 **Business value:** independent teams, safe change, no big-bang upgrade windows.
 
-Notes: This slide is the "why leadership cares" framing — decoupled deploys and no coordinated outages map directly to their current pain of scheduling upgrade windows.
+Notes:
+This slide is the "why leadership cares" framing — decoupled deploys and no coordinated outages map directly to their current pain of scheduling upgrade windows.
 
 ---
 

@@ -33,7 +33,8 @@ topics.
 
 Our lab cluster is exactly this: **three brokers** as Docker containers.
 
-Notes: "Bootstrap" only means the first contact point. The client immediately pulls full cluster metadata and then talks directly to the right leader for each partition.
+Notes:
+"Bootstrap" only means the first contact point. The client immediately pulls full cluster metadata and then talks directly to the right leader for each partition.
 
 ---
 
@@ -75,7 +76,8 @@ ZooKeeper**.
 
 <img src="../images/zookeeper.png" style="width:28%;"/>
 
-Notes: If anyone in the room has run Kafka before, this slide is where they nod. Ask who has operated a ZooKeeper ensemble — the war stories sell the next slide better than you can.
+Notes:
+If anyone in the room has run Kafka before, this slide is where they nod. Ask who has operated a ZooKeeper ensemble — the war stories sell the next slide better than you can.
 
 ---
 
@@ -100,7 +102,8 @@ using a built-in consensus protocol called **KRaft** (**K**afka **Raft**).
 - A quorum of **controllers** agrees on that log using the **Raft** consensus algorithm
 - **One system to run**, not two
 
-Notes: KRaft has been production-ready for a while; Kafka 4 is the release that makes it the *only* option. If a student has ZooKeeper-era experience, this is the headline change.
+Notes:
+KRaft has been production-ready for a while; Kafka 4 is the release that makes it the *only* option. If a student has ZooKeeper-era experience, this is the headline change.
 
 ---
 
@@ -137,7 +140,8 @@ Production (separate roles)        Dev / small (combined)
 - **Dedicated** controllers are typical for large production clusters
 - **Combined** broker+controller nodes are simpler for development — exactly our lab setup
 
-Notes: Point at the lab's docker-compose — `KAFKA_PROCESS_ROLES: "broker,controller"` is this slide made real.
+Notes:
+Point at the lab's docker-compose — `KAFKA_PROCESS_ROLES: "broker,controller"` is this slide made real.
 
 ---
 

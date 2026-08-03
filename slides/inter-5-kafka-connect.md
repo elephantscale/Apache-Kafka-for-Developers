@@ -31,7 +31,8 @@ is where projects bleed time.
 - The same patterns get reimplemented on every team
 - **Kafka Connect** turns that plumbing into **configuration**
 
-Notes: For SSA's "several systems sharing events," Connect is how you get data OUT of those
+Notes:
+For SSA's "several systems sharing events," Connect is how you get data OUT of those
 systems into Kafka without asking each team to write and run a bespoke producer.
 
 ---
@@ -71,7 +72,8 @@ Four terms, one hierarchy:
    └────────────────────────────┘   └────────────────────────────┘
 ```
 
-Notes: This is the same "scale by parallel tasks, rebalance on failure" model as consumer
+Notes:
+This is the same "scale by parallel tasks, rebalance on failure" model as consumer
 groups — sink tasks literally ARE a consumer group under the hood.
 
 ---
@@ -153,7 +155,8 @@ Two ways to get database changes into Kafka:
 - **CDC** is the production answer when you need every change, including deletes, with low DB
   impact
 
-Notes: Name-drop Debezium as the standard CDC option. The lab uses JDBC poll because it's
+Notes:
+Name-drop Debezium as the standard CDC option. The lab uses JDBC poll because it's
 self-contained, but flag the DELETE blind spot explicitly.
 
 ---
@@ -206,7 +209,8 @@ Connect's error handling decides what happens.
 - Good records flow; bad ones land in `dlq-orders` with headers explaining **why**
 - You monitor and reprocess the DLQ out of band — the pipeline never stalls on one bad message
 
-Notes: The DLQ is the single most important operational feature here. Lab 06 injects a bad
+Notes:
+The DLQ is the single most important operational feature here. Lab 06 injects a bad
 record and inspects it in the DLQ with its error headers.
 
 ---
@@ -241,7 +245,8 @@ Where Connect fits in a real architecture:
 - **When NOT to use Connect** — if you need rich per-record business logic, a real app or a
   stream processor may fit better than a connector + SMTs
 
-Notes: Tie to SSA: several source systems → Connect sources → Kafka → sink to a store that powers
+Notes:
+Tie to SSA: several source systems → Connect sources → Kafka → sink to a store that powers
 their real-time reporting. Connect is the integration spine.
 
 ---
