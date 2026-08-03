@@ -116,7 +116,9 @@ out=$($KT --describe --topic orders 2>/dev/null)
 assert_contains "orders topic created with 3 partitions" "PartitionCount: 3" "$out"
 out=$($KT --create --topic too-safe --partitions 1 --replication-factor 4 2>&1)
 assert_contains "RF=4 correctly rejected" "InvalidReplicationFactorException" "$out"
-printf 'order placed\norder shipped\n' | $K kafka-console-producer.sh --bootstrap-server localhost:9092 --topic orders >/dev/null 2>&1
+# note the -i: without it docker exec gives the console producer no stdin, so the
+# piped lines are silently discarded and nothing is produced
+printf 'order placed\norder shipped\n' | docker exec -i "$KBROKER" kafka-console-producer.sh --bootstrap-server localhost:9092 --topic orders >/dev/null 2>&1
 got=$($KC --topic orders --from-beginning --timeout-ms 8000 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "produce/consume round-trip" "2" "$got"
 out=$(run ClusterCheck)
