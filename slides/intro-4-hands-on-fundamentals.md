@@ -15,9 +15,9 @@ Elephant Scale
 
 ## From Concepts to Keyboard
 
-The last three modules were the mental model. Now we make it real.
+The last three modules built the mental model. This one is the keyboard.
 
-- Everything you learned — topics, partitions, offsets, groups, replication — you'll now
+- Everything you learned — topics, partitions, offsets, groups, replication — you
   **see and touch** from the command line
 - The CLI tools are the same ones operators use; they're the fastest way to *understand* Kafka
   before writing a line of client code
@@ -27,7 +27,7 @@ The last three modules were the mental model. Now we make it real.
 and read consumer lag — confidently.
 
 Notes:
-Keep laptops open. This module is meant to be run along with, not watched. Every command here reappears in Lab 01.
+Keep laptops open. This module is meant to be run along with, not watched. Every command here reappears in Lab 01. RUNNING THE SPLIT SCHEDULE (Lab 01 Ex 1-2 already done after Core Concepts)? Say so out loud: 'you've already got a cluster and a topic — this module is the rest of it, then you finish the lab.' Running the lab in one block instead? Then this is genuinely their first keyboard contact, so lean on 'now we make it real.' The slide is worded to be true either way.
 
 ---
 
