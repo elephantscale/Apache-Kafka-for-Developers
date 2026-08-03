@@ -32,7 +32,8 @@ topic "orders"  (oldest ──────────────────�
   consumer A               consumer B   (read independently)
 ```
 
-Notes: If students remember only one thing today, it's "topic = append-only log." Partitions, offsets, and consumer groups all follow from this.
+Notes:
+If students remember only one thing today, it's "topic = append-only log." Partitions, offsets, and consumer groups all follow from this.
 
 ---
 
@@ -82,7 +83,8 @@ offset:  0    1    2    3    4
               (has read 0,1,2; next is 3)
 ```
 
-Notes: This is the mechanism behind replay — seek a consumer back to an earlier offset and it re-reads history. We'll do exactly that in the labs.
+Notes:
+This is the mechanism behind replay — seek a consumer back to an earlier offset and it re-reads history. We'll do exactly that in the labs.
 
 ---
 
@@ -146,7 +148,8 @@ If you come from other systems, this translation makes it click faster:
 > The names are historical, not technical destiny — the **concepts** are what matter.
 > When a term feels odd, translate it in your head.
 
-Notes: This slide saves an hour of confusion later. "Partition = shard" and "offset = cursor" are the two that unlock the most — developers already own both concepts, they just don't recognize them under Kafka's names. Invite the room to name the equivalent in whatever they use today (JMS, MQ, SQS, a database read cursor).
+Notes:
+This slide saves an hour of confusion later. "Partition = shard" and "offset = cursor" are the two that unlock the most — developers already own both concepts, they just don't recognize them under Kafka's names. Invite the room to name the equivalent in whatever they use today (JMS, MQ, SQS, a database read cursor).
 
 ---
 
@@ -167,7 +170,8 @@ topic "orders" (3 partitions)     group "billing"
    P2 ─────────────────────────►  consumer 3
 ```
 
-Notes: This is the heart of Kafka's scaling model on the read side. The next slide shows the limit and what "different groups" means.
+Notes:
+This is the heart of Kafka's scaling model on the read side. The next slide shows the limit and what "different groups" means.
 
 ---
 
@@ -243,7 +247,8 @@ The **ISR** is the set of replicas that are **caught up** with the leader.
 **High-level takeaway for now:** replication + ISR is *why* Kafka can lose a broker
 and keep running without losing your data. The knobs come in the intermediate days.
 
-Notes: Keep this conceptual in the intro. Module 11 (Reliability) is where acks, min.insync.replicas, and the durability trade-offs get hands-on.
+Notes:
+Keep this conceptual in the intro. Module 11 (Reliability) is where acks, min.insync.replicas, and the durability trade-offs get hands-on.
 
 ---
 
@@ -282,7 +287,8 @@ after  compaction:                        (user-2,Y)            (user-1,C)
                     only the latest value per key survives
 ```
 
-Notes: Compaction underpins Kafka Streams' KTables and Connect's offset storage. Introduce the idea here; it returns in the stream-processing module.
+Notes:
+Compaction underpins Kafka Streams' KTables and Connect's offset storage. Introduce the idea here; it returns in the stream-processing module.
 
 ---
 

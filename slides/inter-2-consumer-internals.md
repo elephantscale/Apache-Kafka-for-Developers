@@ -32,7 +32,8 @@ while (running) {
 - Three things to get right: **group membership**, **offset commits**, and **positioning**
 - Everything in this module hangs off that loop
 
-Notes: Contrast with a push/queue system. Pull means a slow consumer can't be overwhelmed — it just polls less often. Back-pressure is built in.
+Notes:
+Contrast with a push/queue system. Pull means a slow consumer can't be overwhelmed — it just polls less often. Back-pressure is built in.
 
 ---
 
@@ -89,7 +90,8 @@ up its partitions, waits for the new assignment, then resumes.
 - Common causes: processing a batch takes longer than `max.poll.interval.ms`, so the broker
   thinks the consumer is dead and rebalances it out
 
-Notes: This is the pain the next-gen protocol targets. If students have run Kafka consumers in anger, "rebalance storms" will be a familiar horror story.
+Notes:
+This is the pain the next-gen protocol targets. If students have run Kafka consumers in anger, "rebalance storms" will be a familiar horror story.
 
 ---
 
@@ -113,7 +115,8 @@ c.put(ConsumerConfig.GROUP_PROTOCOL_CONFIG, "consumer");   // default: "classic"
 **For you as a developer:** your poll loop, your commits, your rebalance listener — all
 unchanged. You flip one config and the group coordinates differently underneath.
 
-Notes: Correct the common half-truth here: KIP-848 is GA in Kafka 4, but a consumer does *not* get it automatically — `group.protocol` still defaults to `classic`. The broker side must also allow it (`group.coordinator.rebalance.protocols`); our lab compose already enables `classic,consumer`, so students can try the flip. Caveat worth stating: a group must be either all-classic or all-consumer during migration, and `onPartitionsLost` semantics differ slightly — which is why teams migrate deliberately rather than flipping in place.
+Notes:
+Correct the common half-truth here: KIP-848 is GA in Kafka 4, but a consumer does *not* get it automatically — `group.protocol` still defaults to `classic`. The broker side must also allow it (`group.coordinator.rebalance.protocols`); our lab compose already enables `classic,consumer`, so students can try the flip. Caveat worth stating: a group must be either all-classic or all-consumer during migration, and `onPartitionsLost` semantics differ slightly — which is why teams migrate deliberately rather than flipping in place.
 
 ---
 
@@ -184,7 +187,8 @@ try (Consumer<String, String> consumer = new KafkaConsumer<>(c)) {
 - `commitSync()` blocks and retries (safe, slower); `commitAsync()` returns immediately
   (faster, best-effort) — a common pattern is async in the loop, sync on shutdown
 
-Notes: The ordering "process then commit" vs "commit then process" IS the difference between at-least-once and at-most-once. Draw it explicitly.
+Notes:
+The ordering "process then commit" vs "commit then process" IS the difference between at-least-once and at-most-once. Draw it explicitly.
 
 ---
 
@@ -222,7 +226,8 @@ consumer.assign(List.of(tp));        // manual assignment — no group, no rebal
 consumer.seekToBeginning(List.of(tp));
 ```
 
-Notes: Replay is a superpower unique to log-based systems. Reprocess after a bug fix, backfill a new downstream, rebuild state — all just "seek and read again."
+Notes:
+Replay is a superpower unique to log-based systems. Reprocess after a bug fix, backfill a new downstream, rebuild state — all just "seek and read again."
 
 ---
 
@@ -251,7 +256,8 @@ consumer.subscribe(List.of("orders"), new ConsumerRebalanceListener() {
 - `onPartitionsAssigned` fires when you gain partitions → seed state, log the assignment
 - Committing on revoke is how you avoid re-processing a big chunk after every rebalance
 
-Notes: There is a third callback, `onPartitionsLost`, for when partitions are taken away *without* a clean revoke (the consumer was already fenced out). Don't commit there — you no longer own them. The default implementation just calls `onPartitionsRevoked`, which is usually wrong.
+Notes:
+There is a third callback, `onPartitionsLost`, for when partitions are taken away *without* a clean revoke (the consumer was already fenced out). Don't commit there — you no longer own them. The default implementation just calls `onPartitionsRevoked`, which is usually wrong.
 
 ---
 
@@ -269,7 +275,8 @@ A checklist for consumers that survive real production:
 - **Close cleanly** — `consumer.close()` (or try-with-resources) triggers a graceful leave,
   so the group rebalances immediately instead of waiting out the session timeout
 
-Notes: This checklist is basically Lab 03. Each item maps to an exercise or a "what this shows" callout.
+Notes:
+This checklist is basically Lab 03. Each item maps to an exercise or a "what this shows" callout.
 
 ---
 

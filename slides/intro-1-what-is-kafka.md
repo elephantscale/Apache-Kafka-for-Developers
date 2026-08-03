@@ -32,7 +32,8 @@ That was fine when the business ran on a daily cycle. It is not fine when:
 
 The world moved to **events that must be reacted to as they happen**. Batch can't do that.
 
-Notes: Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example.
+Notes:
+Anchor this in the students' own systems — ask what runs as a nightly job today and what the business wishes were real-time. Almost everyone has an example.
 
 ---
 
@@ -93,7 +94,8 @@ This is the tangle Kafka was built at LinkedIn to untangle.
 <img src="../images/Franz_Kafka,_1923.jpg" style="width:22%;"/> &nbsp;
 <img src="../images/kafka-metamorphosis-bug.jpg" style="width:30%;"/>
 
-Notes: Worth 60 seconds — it makes the technology human and gives the N×M slide a real origin. The Metamorphosis joke lands with most rooms: the one book everyone half-remembers from school, and here it is running your payments.
+Notes:
+Worth 60 seconds — it makes the technology human and gives the N×M slide a real origin. The Metamorphosis joke lands with most rooms: the one book everyone half-remembers from school, and here it is running your payments.
 
 ---
 
@@ -134,7 +136,8 @@ Three things at once:
 Because it is durable and replayable, Kafka is not just a message bus that forgets —
 it is the **system of record for events in motion**.
 
-Notes: Emphasize "log," not "queue." A queue forgets a message once it is consumed; Kafka keeps it, which is what enables replay and multiple independent consumers.
+Notes:
+Emphasize "log," not "queue." A queue forgets a message once it is consumed; Kafka keeps it, which is what enables replay and multiple independent consumers.
 
 ---
 
@@ -172,7 +175,8 @@ Request/Response          Publish/Subscribe
                                             └──► D  (added later, A unchanged)
 ```
 
-Notes: Both patterns coexist in real systems. The point isn't "REST is bad" — it's that fan-out, decoupling, and replay are exactly where request/response gets painful and pub/sub shines.
+Notes:
+Both patterns coexist in real systems. The point isn't "REST is bad" — it's that fan-out, decoupling, and replay are exactly where request/response gets painful and pub/sub shines.
 
 ---
 
@@ -211,7 +215,8 @@ and IoT.
 It has become the **de facto standard** for event streaming — which is why fluency
 with Kafka is now a core skill for developers, not a specialty.
 
-Notes: The numbers are headroom, not a target — the point is that nothing you build in this course will strain Kafka. Ubiquity matters more than scale: join almost any data-heavy engineering team and Kafka is somewhere in the architecture.
+Notes:
+The numbers are headroom, not a target — the point is that nothing you build in this course will strain Kafka. Ubiquity matters more than scale: join almost any data-heavy engineering team and Kafka is somewhere in the architecture.
 
 ---
 
@@ -263,7 +268,8 @@ App ──► Kafka ──┬──► real-time processor ──► immediate a
 - The database becomes *a* consumer of the log, not the single gatekeeper of truth
 - History is retained, so a new consumer can be added later and **replay from the beginning**
 
-Notes: This is the mental shift that's harder than any API. Teams that keep treating the DB as the source of truth and Kafka as "just a queue in between" never get the benefits. Ask the room where their current source of truth lives.
+Notes:
+This is the mental shift that's harder than any API. Teams that keep treating the DB as the source of truth and Kafka as "just a queue in between" never get the benefits. Ask the room where their current source of truth lives.
 
 ---
 
@@ -281,7 +287,8 @@ Names you'll hear once Kafka is in the architecture — worth recognizing early:
   become event sources without being rewritten
 - **Fan-out** — one event, many independent consumers reacting on their own
 
-Notes: Don't teach these in depth here — just plant the vocabulary so the terms aren't new when they appear in design discussions. CDC is usually the most immediately relevant: it's how an organization with established databases starts an event-driven journey without a rewrite.
+Notes:
+Don't teach these in depth here — just plant the vocabulary so the terms aren't new when they appear in design discussions. CDC is usually the most immediately relevant: it's how an organization with established databases starts an event-driven journey without a rewrite.
 
 ---
 

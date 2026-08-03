@@ -36,7 +36,8 @@ broker acknowledges  →  delivery callback fires
 - The call is **asynchronous** — it returns before the broker has the record
 - Understanding these stages is how you tune for **throughput, latency, and durability**
 
-Notes: The whole module is a walk down this pipeline. Anchor every config we discuss to a stage on this diagram.
+Notes:
+The whole module is a walk down this pipeline. Anchor every config we discuss to a stage on this diagram.
 
 ---
 
@@ -62,7 +63,8 @@ try (Producer<String, String> producer = new KafkaProducer<>(p)) {
 }   // close() flushes first
 ```
 
-Notes: In the Java client the serializer is *configuration*, not something you call — `StringSerializer` turns each String into UTF-8 bytes on the way out. The JSON here is a hand-built string; Module 8 replaces it with schema-backed Avro serdes. Note the type parameters `<String, String>` must match the configured serializers.
+Notes:
+In the Java client the serializer is *configuration*, not something you call — `StringSerializer` turns each String into UTF-8 bytes on the way out. The JSON here is a hand-built string; Module 8 replaces it with schema-backed Avro serdes. Note the type parameters `<String, String>` must match the configured serializers.
 
 ---
 
@@ -100,7 +102,8 @@ partition 2:  user-1:X  user-1:Y               ← ordered
 across P0 and P2: no ordering relationship
 ```
 
-Notes: A frequent production bug: needing per-customer order but producing keyless "for balance," then being surprised events interleave. The key *is* the ordering contract.
+Notes:
+A frequent production bug: needing per-customer order but producing keyless "for balance," then being surprised events interleave. The key *is* the ordering contract.
 
 ---
 
@@ -140,7 +143,8 @@ p.put(ProducerConfig.BATCH_SIZE_CONFIG,       65536);
 p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
 ```
 
-Notes: Compression reduces network, disk, *and* replication traffic. On JSON especially the ratio is large. It costs producer CPU, but zstd/lz4 make that cheap.
+Notes:
+Compression reduces network, disk, *and* replication traffic. On JSON especially the ratio is large. It costs producer CPU, but zstd/lz4 make that cheap.
 
 ---
 
@@ -164,7 +168,7 @@ acks=all  produce ──► leader + ISR wrote ──► ack   safe, slightly sl
 
 ---
 
-## `acks=all` Needs a Partner: `min.insync.replicas`
+## Why `acks=all` Needs `min.insync.replicas`
 
 `acks=all` means "all *in-sync* replicas" — but if the ISR has shrunk to just the
 leader, "all" is one. The topic/broker setting **`min.insync.replicas`** sets the floor.
@@ -173,7 +177,8 @@ leader, "all" is one. The topic/broker setting **`min.insync.replicas`** sets th
 - If too few replicas are in sync, the producer gets an error instead of a false "durable"
 - Together: `acks=all` + `min.insync.replicas=2` = "acknowledged means safely on ≥2 brokers"
 
-Notes: This is the durability contract. We only introduce it here; Module 11 (Reliability) makes it hands-on. The point for producers: `acks=all` alone isn't enough without the ISR floor.
+Notes:
+This is the durability contract. We only introduce it here; Module 11 (Reliability) makes it hands-on. The point for producers: `acks=all` alone isn't enough without the ISR floor.
 
 ---
 
@@ -229,7 +234,8 @@ Result: **exactly-once delivery from producer to broker**, even across retries. 
 enough to be a default — and since Kafka 3.0 it **is** the default (`enable.idempotence=true`),
 so on Kafka 4 you get it unless you turn it off.
 
-Notes: Worth stating plainly — most students assume they must opt in. On Kafka 4 the trap is the reverse: setting `acks=1` or `max.in.flight > 5` *silently conflicts* with idempotence and the client will refuse to start (or, in older versions, quietly disable it).
+Notes:
+Worth stating plainly — most students assume they must opt in. On Kafka 4 the trap is the reverse: setting `acks=1` or `max.in.flight > 5` *silently conflicts* with idempotence and the client will refuse to start (or, in older versions, quietly disable it).
 
 ---
 
@@ -246,7 +252,8 @@ Be precise about the guarantee — it's a common interview and production trap.
 **Idempotence = exactly-once *to the broker*. Transactions = exactly-once *across* a
 processing step.**
 
-Notes: Draw the boundary clearly. Idempotence is a producer-local guarantee. End-to-end exactly-once (read-process-write) is the transactions story, which is the next big module.
+Notes:
+Draw the boundary clearly. Idempotence is a producer-local guarantee. End-to-end exactly-once (read-process-write) is the transactions story, which is the next big module.
 
 ---
 
@@ -274,7 +281,8 @@ try (Producer<String, String> producer = new KafkaProducer<>(p)) {
 }
 ```
 
-Notes: The callback is how you learn the final partition/offset — or the error. `send()` also returns a `Future<RecordMetadata>`; calling `.get()` on it makes the send synchronous, which is simple but kills throughput. Prefer the callback. `flush()` blocks until everything in flight is delivered; try-with-resources `close()` flushes too, so the explicit `flush()` here is belt-and-braces (and the place to check for errors before exiting).
+Notes:
+The callback is how you learn the final partition/offset — or the error. `send()` also returns a `Future<RecordMetadata>`; calling `.get()` on it makes the send synchronous, which is simple but kills throughput. Prefer the callback. `flush()` blocks until everything in flight is delivered; try-with-resources `close()` flushes too, so the explicit `flush()` here is belt-and-braces (and the place to check for errors before exiting).
 
 ---
 

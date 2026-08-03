@@ -30,7 +30,8 @@ the data **as it flows** — filter, enrich, aggregate, join — continuously.
 - This is exactly what real-time **reporting and analytics** need — compute metrics as events
   arrive, not in a nightly batch
 
-Notes: This module is where SSA's "real-time reporting/analytics" and "did that person call?"
+Notes:
+This module is where SSA's "real-time reporting/analytics" and "did that person call?"
 correlation actually get built. Frame it as the payoff of the whole course.
 
 ---
@@ -93,7 +94,8 @@ KTable  "user-status" : (user1, ACTIVE) (user1, AWAY)                   ← late
 - Use a **KStream** for events/facts; a **KTable** for current state / lookups
 - A compacted topic + a KTable = "materialized current state," rebuildable from the log
 
-Notes: Tie back to Intro 2 log compaction — a KTable is the programmatic face of a compacted
+Notes:
+Tie back to Intro 2 log compaction — a KTable is the programmatic face of a compacted
 "latest-per-key" topic.
 
 ---
@@ -153,7 +155,8 @@ tumbling, 1-min:   |--10:00--|--10:01--|--10:02--|
 - "Claims per hour," "appointments per office per 15 minutes" — windowed aggregations
 - Windows need a notion of **event time** and handling for **late** events (watermarks)
 
-Notes: Windowing is the heart of real-time reporting. SSA's "claims per hour/region" is a
+Notes:
+Windowing is the heart of real-time reporting. SSA's "claims per hour/region" is a
 tumbling-window count.
 
 ---
@@ -175,7 +178,8 @@ tumbling-window count.
 - This is exactly the "did that person call?" correlation — join the claim and contact streams
   by person id
 
-Notes: This slide is the SSA correlation use case. A bare consumer can't do this cheaply; a
+Notes:
+This slide is the SSA correlation use case. A bare consumer can't do this cheaply; a
 stream processor's windowed join is built for it.
 
 ---
@@ -241,7 +245,8 @@ SELECT region, COUNT(*) FROM claims GROUP BY region;
 - `INSERT INTO` a Kafka-backed table = a running pipeline that keeps the sink topic current
 - This is how a dashboard stays live — Flink writes the aggregate topic, the dashboard reads it
 
-Notes: This is Lab 07's spine — source table, filter, windowed count, and INSERT INTO a sink,
+Notes:
+This is Lab 07's spine — source table, filter, windowed count, and INSERT INTO a sink,
 all in SQL. It maps 1:1 to their real-time reporting goal.
 
 ---

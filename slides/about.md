@@ -23,7 +23,8 @@ Elephant Scale
 - **10.** Stream Processing (Kafka Streams & Flink SQL)
 - **11.** Reliability, Scaling & Operations for Developers
 
-Notes: Four days end to end, deliverable as one track or as two standalone courses. The intro day makes it accessible to newcomers; the intermediate days give working developers real depth.
+Notes:
+Four days end to end, deliverable as one track or as two standalone courses. The intro day makes it accessible to newcomers; the intermediate days give working developers real depth.
 
 ---
 
@@ -43,7 +44,8 @@ Notes: Four days end to end, deliverable as one track or as two standalone cours
 
    - Ask a lot of questions
 
-Notes: This is a developer course — the emphasis is on writing code against Kafka, not administering a cluster. For the intermediate days we assume Kafka fundamentals (the intro day, or equivalent experience).
+Notes:
+This is a developer course — the emphasis is on writing code against Kafka, not administering a cluster. For the intermediate days we assume Kafka fundamentals (the intro day, or equivalent experience).
 
 ---
 
@@ -65,7 +67,8 @@ Notes:
 
 <img src="../images/any-key.png" style="width:50%;"/>
 
-Notes: Every concept is reinforced with a lab. All slides, labs, and code are yours to keep in a Git repository — re-run the exercises after the course.
+Notes:
+Every concept is reinforced with a lab. All slides, labs, and code are yours to keep in a Git repository — re-run the exercises after the course.
 
 ---
 
