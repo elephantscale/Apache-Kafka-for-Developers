@@ -60,6 +60,17 @@ if [ ! -f "$SRC" ]; then
   exit 1
 fi
 
+# Common mistake: editing a copy in the project root instead of the package
+# directory. Maven only compiles what is under src/main/java, so the stray file is
+# silently ignored and the OLD class runs -- which looks like run.sh not recompiling.
+STRAY="${CLASS##*.}.java"
+if [ -f "$STRAY" ]; then
+  echo "WARNING: found $PWD/$STRAY" >&2
+  echo "         Maven ignores it. The class that will run is $SRC" >&2
+  echo "         If you meant to edit the lab class, edit that path instead." >&2
+  echo "" >&2
+fi
+
 mvn -q -B compile
 
 if [ $# -gt 0 ]; then
