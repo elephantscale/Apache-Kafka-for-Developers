@@ -72,7 +72,7 @@ done
 Seed some input:
 
 ```java
-// save as SeedInput.java  — usage: ./run.sh SeedInput 20
+// src/main/java/com/elephantscale/kafka/SeedInput.java  — usage: ./run.sh SeedInput 20
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -116,7 +116,7 @@ cd labs/kafka-labs
 ### 1.1 Commit a transaction
 
 ```java
-// save as TxnProducer.java
+// src/main/java/com/elephantscale/kafka/TxnProducer.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -181,7 +181,7 @@ All five appear — they were committed atomically.
 ### 2.1 Produce a committed batch and an aborted batch
 
 ```java
-// save as TxnAbort.java
+// src/main/java/com/elephantscale/kafka/TxnAbort.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -259,7 +259,7 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 ### 3.1 The pipeline
 
 ```java
-// save as PipelineEos.java
+// src/main/java/com/elephantscale/kafka/PipelineEos.java
 package com.elephantscale.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
