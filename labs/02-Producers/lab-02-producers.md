@@ -21,7 +21,7 @@ By the end of this lab you will be able to:
 
 - The lab environment from [`labs/SETUP.md`](../SETUP.md); the core cluster running
   (`docker compose up -d`, all three brokers healthy)
-- **JDK 17** and **Maven** on the host:
+- **JDK 17** and **Maven** on the host:1
   ```bash
   java -version    # 17.x
   mvn -version     # 3.9+
@@ -83,7 +83,7 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 ### 1.1 Write the producer
 
 ```java
-// save as ProducerBasic.java
+// src/main/java/com/elephantscale/kafka/ProducerBasic.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -152,7 +152,7 @@ docker exec kafka-1 kafka-console-consumer.sh --bootstrap-server localhost:9092 
 ### 2.1 Prove same-key → same-partition
 
 ```java
-// save as ProducerKeys.java
+// src/main/java/com/elephantscale/kafka/ProducerKeys.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -226,7 +226,7 @@ Re-run and observe that keyless records are **spread across all three partitions
 ### 3.1 A throughput harness
 
 ```java
-// save as ProducerThroughput.java
+// src/main/java/com/elephantscale/kafka/ProducerThroughput.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -302,7 +302,7 @@ distance to your brokers. Tune against your workload, not against a table in a s
 ### 4.1 Time the acks levels
 
 ```java
-// save as ProducerAcks.java
+// src/main/java/com/elephantscale/kafka/ProducerAcks.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -371,7 +371,7 @@ silently losing acknowledged data.
 ### 5.1 Turn it on
 
 ```java
-// save as ProducerIdempotent.java
+// src/main/java/com/elephantscale/kafka/ProducerIdempotent.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;

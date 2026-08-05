@@ -44,7 +44,7 @@ docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 \
 We'll drive it with a small producer you can re-run whenever a topic needs data:
 
 ```java
-// save as Feed.java  — usage: ./run.sh Feed 100
+// src/main/java/com/elephantscale/kafka/Feed.java  — usage: ./run.sh Feed 100
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.producer.*;
@@ -87,7 +87,7 @@ public class Feed {
 ### 1.1 Write the consumer
 
 ```java
-// save as ConsumerBasic.java
+// src/main/java/com/elephantscale/kafka/ConsumerBasic.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
@@ -157,7 +157,7 @@ offsets are at the end. That's auto-commit having saved your position (default
 ### 2.1 Simulate slow processing + a crash
 
 ```java
-// save as ConsumerAutocommitLoss.java
+// src/main/java/com/elephantscale/kafka/ConsumerAutocommitLoss.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
@@ -226,7 +226,7 @@ interval had already committed those offsets. That gap is lost data.
 ### 3.1 Process first, then commit
 
 ```java
-// save as ConsumerManual.java
+// src/main/java/com/elephantscale/kafka/ConsumerManual.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
@@ -295,7 +295,7 @@ and exactly why processing must be idempotent.
 ### 4.1 Replay the topic from the beginning
 
 ```java
-// save as ConsumerReplay.java
+// src/main/java/com/elephantscale/kafka/ConsumerReplay.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
@@ -372,7 +372,7 @@ count matches everything `Feed` has produced so far.
 ### 5.1 Add a rebalance listener
 
 ```java
-// save as ConsumerRebalance.java
+// src/main/java/com/elephantscale/kafka/ConsumerRebalance.java
 package com.elephantscale.kafka;
 
 import org.apache.kafka.clients.consumer.*;
