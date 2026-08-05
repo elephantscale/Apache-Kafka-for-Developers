@@ -69,6 +69,33 @@ consumer ──"what is schema 7?"──► Schema Registry ──returns──�
 
 ---
 
+## Aside: Apache Kafka vs. Confluent
+
+The registry is our first **Confluent** component — worth knowing where the line is.
+
+| | Apache (ASF, Apache 2.0) | Confluent (company, since 2014) |
+|---|---|---|
+| **Core** | Brokers, Java clients, Kafka Streams, Connect *framework*, MirrorMaker | — |
+| **Added** | — | Schema Registry, ksqlDB, REST Proxy, most connectors |
+| **Commercial** | — | Control Center, RBAC, Cluster Linking, Confluent Cloud |
+
+**Confluent is not a fork** — Confluent Platform ships stock Apache brokers and adds
+services *around* them.
+
+Look at this course's own stack:
+
+- Brokers `apache/kafka:4.0.0`, and Flink — **Apache**
+- Schema Registry, the Avro serdes, the JDBC & S3 connectors — **Confluent**
+- That extra `<repository>` in your `pom.xml`? The serdes aren't on Maven Central.
+
+> **Version trap:** Confluent Platform numbering ≠ Kafka numbering. CP 7.7 ≈ Kafka 3.7,
+> CP 8.0 ≈ Kafka 4.0.
+
+Notes:
+2-3 min, and only if it comes up — but it comes up most deliveries, usually right here when students notice the image is confluentinc/ rather than apache/. The honest answer to "do I need Confluent?": not for Kafka itself, but the moment you want a schema registry or off-the-shelf connectors you are usually reaching into their ecosystem. Open alternatives exist — Karapace and Apicurio for the registry, Debezium for CDC. If asked about Redpanda: it is a Kafka-PROTOCOL-compatible broker (C++, no JVM, no ZooKeeper), not Apache Kafka at all, but clients cannot tell the difference.
+
+---
+
 ## Serdes: How Your Code Uses It
 
 You don't hand-code the wire format — a **serializer/deserializer (serde)** does it. In the
