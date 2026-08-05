@@ -211,6 +211,36 @@ public class ConsumerAutocommitLoss {
 On restart it likely **skips ahead**, past records it never actually finished — because the
 interval had already committed those offsets. That gap is lost data.
 
+**Write down which `seq` values you actually saw processed**, across both runs. You produced
+20 events; you will have processed far fewer, and the missing ones were never handed to
+anybody. (Don't expect them in numeric order — `Feed` spreads events across 3 partitions and
+the consumer reads partition by partition. Per-partition ordering, exactly as promised.)
+
+### 2.3 The proof: Kafka thinks you're finished
+
+Run the consumer a couple more times so the group reaches the end of the topic, then ask
+Kafka how far behind the group is:
+
+```bash
+docker exec kafka-1 kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
+  --describe --group lab03-autoloss
+```
+
+```
+GROUP           TOPIC         PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG
+lab03-autoloss  lab03-events  0          7               7               0
+lab03-autoloss  lab03-events  1          6               6               0
+lab03-autoloss  lab03-events  2          7               7               0
+```
+
+**`LAG` is 0 on every partition.** Kafka is completely satisfied — as far as the cluster is
+concerned this group has consumed the entire topic. Your application processed a fraction of
+it.
+
+That is the whole point of the exercise. There is **no exception, no error log, and no metric**
+that reveals the gap: the only way to know is to count what your own code actually handled.
+This is what teams mean when they report "after every crash, a few events go missing."
+
 > **If a sharp student asks:** is auto-commit always unsafe? No — it's fine when losing a few
 > records doesn't matter (metrics, logs). The problem is only when "committed" must mean
 > "processed." For that, commit manually.
