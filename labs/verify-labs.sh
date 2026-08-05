@@ -10,6 +10,8 @@
 # from working code, this fails.
 #
 # Usage:
+#   ./verify-labs.sh --day1     # Day 1 only: prereqs, cluster, Lab 01   ~3 min
+#                               #   leaves the cluster UP, ready to teach
 #   ./verify-labs.sh            # Labs 01-05 (core cluster only)   ~10 min
 #   ./verify-labs.sh --all      # + Labs 06-08 (connect/flink/monitoring)  ~25 min
 #   ./verify-labs.sh --keep     # leave the cluster running afterwards
@@ -18,10 +20,11 @@
 
 set -uo pipefail
 
-ALL=0; KEEP=0
+ALL=0; KEEP=0; DAY1=0
 for a in "$@"; do
   case "$a" in
     --all)  ALL=1 ;;
+    --day1) DAY1=1; KEEP=1 ;;
     --keep) KEEP=1 ;;
     -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "unknown option: $a" >&2; exit 2 ;;
@@ -123,6 +126,18 @@ got=$($KC --topic orders --from-beginning --timeout-ms 8000 2>/dev/null | wc -l 
 assert_eq "produce/consume round-trip" "2" "$got"
 out=$(run ClusterCheck)
 assert_contains "ClusterCheck sees 3 brokers" "count: 3" "$out"
+
+if [ "$DAY1" = "1" ]; then
+  section "Summary — Day 1 readiness"
+  printf "  %d passed, %d failed\n" "$PASS" "$FAIL"
+  log "  $PASS passed, $FAIL failed"
+  if [ "$FAIL" -gt 0 ]; then
+    printf "\n${B}Failures only (screenshot this):${N}\n"; grep "^  FAIL" "$REPORT"
+  fi
+  info "cluster left RUNNING — ready for class (docker ps to confirm)"
+  info "Lab 01 needs no Java; ClusterCheck above also warmed the Maven cache for Lab 02"
+  [ "$FAIL" -eq 0 ] && exit 0 || exit 1
+fi
 
 # ------------------------------------------------------------------------ Lab 02
 section "4. Lab 02 — Producers"
