@@ -3,14 +3,14 @@
 **Format:** 3 days, hands-on and lab-intensive. Optional 4th day (see *Add-On Modules*).
 **Level:** Intermediate. Assumes Kafka fundamentals.
 **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free.
-**Status:** Proposed. Replaces *Apache Kafka for Developers (Intermediate)* for SSA.
 
 ---
 
-## Why this course exists
+## Description
 
-The Apache Kafka course teaches the protocol. This course teaches **the product SSA
-actually runs**.
+Apache Kafka is the protocol. **Confluent Platform is the product enterprises actually
+run** — and the distance between the two is where a great deal of developer time is spent.
+This course closes it.
 
 Every module is delivered on a real Confluent Platform cluster: `cp-server` brokers,
 Control Center, Confluent Schema Registry, ksqlDB, Kafka Connect with Confluent Hub,
@@ -28,9 +28,9 @@ than in a log file.
 
 ## Audience
 
-Software developers and data engineers building applications against SSA's Confluent
-Platform cluster. Not a course for platform operators, though developers will finish able
-to read what the operations team sees.
+Software developers and data engineers building applications against a self-managed
+Confluent Platform cluster. Not a course for platform operators, though developers will
+finish able to read what the operations team sees.
 
 ## Prerequisites
 
@@ -229,9 +229,9 @@ allowed to assume.
 |---|---|
 | **Kafka Streams in Java** | Teams building stateful services in the JVM rather than SQL |
 | **Flink SQL on Confluent** | Teams tracking Confluent's strategic direction beyond ksqlDB |
-| **Confluent Cloud** | If SSA is evaluating a managed path — Stream Governance, Catalog, Lineage |
+| **Confluent Cloud** | Teams evaluating a managed path — Stream Governance, Catalog, Lineage |
 | **Migrating from OSS Kafka to CP** | If teams are still running Apache clusters alongside |
-| **Confluent for Kubernetes (CFK)** | If SSA deploys CP via the operator |
+| **Confluent for Kubernetes (CFK)** | Sites deploying Confluent Platform via the operator |
 | **Performance tuning workshop** | High-volume fan-out, partition sizing, consumer scaling |
 
 ---
@@ -250,44 +250,6 @@ A single Docker Compose stack per participant, on a provided VM.
 | REST Proxy | `confluentinc/cp-kafka-rest:7.9.8` | Day 3 |
 | Postgres, MinIO | `postgres:16`, `minio/minio` | Connect endpoints, not Kafka components |
 
-Client code is Java 17 + Maven, in the existing single-project layout
-(`labs/kafka-labs/`), unchanged.
-
-### Open items for ProTech / Celia
-
-These need answers before the image is built. They are listed here rather than assumed.
-
-1. **Which CP version does SSA run in production?** This outline targets **7.9.8** because
-   it is the last fully-tagged line with the classic Control Center. If SSA is on **CP 8.x**,
-   the stack moves to 8.x and Control Center becomes the next-gen image
-   (`cp-enterprise-control-center-next-gen`), which is Prometheus-backed and currently only
-   published under `latest*` tags. **Matching SSA's production version matters more than
-   version currency** — confirm before building.
-2. **Licensing.** `cp-server` enterprise features (Tiered Storage, Cluster Linking,
-   Self-Balancing, RBAC, broker-side schema validation) and Control Center are commercially
-   licensed. A multi-broker classroom cluster runs on the 30-day trial unless a license is
-   supplied. Confluent's developer license covers a single broker indefinitely, which is not
-   enough for the replication labs. **ProTech should confirm the license position** — SSA
-   holding a production license does not automatically cover a training image.
-3. **VM memory.** The current spec is 12 GB. Control Center is the heaviest component in
-   this stack. The build will use Control Center's reduced-infrastructure
-   (`management`) mode to fit, but **16 GB would remove the constraint** and let the class
-   see the full metrics experience SSA runs in production. Worth asking.
-4. **Tiered Storage backend.** The Module 9 lab needs object storage; MinIO is already in the
-   stack and can serve as the S3-compatible target. Confirm this is acceptable, or whether an
-   AWS S3 bucket is preferred.
-
----
-
-## What Carries Over
-
-Not a rewrite from zero. Of the existing intermediate course:
-
-- **Reused with a Confluent frame:** producer internals, consumer internals, delivery
-  semantics and transactions, Connect fundamentals, the Java lab project, `verify-labs.sh`
-- **Substantially expanded:** Schema Registry (one module → two, plus broker-side enforcement)
-- **New:** Confluent Platform orientation, `confluent` CLI, Control Center throughout,
-  Monitoring Interceptors, Data Contracts and CSFLE, ksqlDB, RBAC, Tiered Storage,
-  Cluster Linking, REST Proxy
-- **Demoted to optional:** Flink SQL (retained as an add-on module), Prometheus/Grafana
-  (Control Center replaces them for this audience)
+Client code is Java 17 + Maven, in a ready-made single Maven project — participants
+write lab classes, not build files. All course materials — slides, labs, and runnable
+code — are supplied in a Git repository that participants keep after the course.
