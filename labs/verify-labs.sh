@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # verify-labs.sh — run the actual course labs end to end and check the results.
 #
+# *** INSTRUCTOR / VM-ACCEPTANCE TOOL — NOT A STUDENT EXERCISE ***
+# It DELETES AND RECREATES the lab topics, works through the exercises for you, and
+# kills a broker. Running it mid-class destroys a student's work. Students who want
+# to check their environment should run verify-setup.sh instead.
+#
 # This is different from verify-setup.sh, which checks the ENVIRONMENT (Docker, JDK,
 # Maven, cluster reachable). This script runs the LABS: it extracts every Java class
 # out of the lab Markdown, compiles it, runs the exercises, and asserts the outcomes
