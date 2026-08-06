@@ -181,7 +181,8 @@ $K kafka-consumer-groups.sh --bootstrap-server localhost:9092 --delete --group l
 run SeedInput 20 >/dev/null
 run PipelineEos 5 >/dev/null 2>&1   # crashes on purpose
 run PipelineEos   >/dev/null 2>&1 &
-sleep 75; kill %1 2>/dev/null; pkill -f "exec.mainClass=com.elephantscale.kafka.PipelineEos" 2>/dev/null
+EOS_PID=$!
+sleep 75; kill "$EOS_PID" 2>/dev/null; pkill -f "exec.mainClass=com.elephantscale.kafka.PipelineEos" 2>/dev/null
 $KC --topic lab04-output --from-beginning --timeout-ms 10000 --isolation-level read_committed 2>/dev/null | sort > /tmp/vl-eos.txt
 tot=$(wc -l < /tmp/vl-eos.txt | tr -d ' '); dup=$(sort /tmp/vl-eos.txt | uniq -d | wc -l | tr -d ' ')
 assert_eq "exactly-once across a crash: 20 outputs" "20" "$tot"
@@ -266,7 +267,8 @@ SELECT COUNT(*) AS total FROM claims;
 SQL
 docker cp /tmp/vl-flink.sql "${FLINK_CONTAINER:-flink-jobmanager}":/tmp/vl-flink.sql >/dev/null 2>&1
 ( docker exec "${FLINK_CONTAINER:-flink-jobmanager}" ./bin/sql-client.sh -f /tmp/vl-flink.sql > /tmp/vl-flink.out 2>&1 ) &
-sleep 90; kill %1 2>/dev/null
+FLINK_PID=$!
+sleep 90; kill "$FLINK_PID" 2>/dev/null
 top=$(grep -oE '\| \+U \|\s+[0-9]+' /tmp/vl-flink.out | grep -oE '[0-9]+$' | sort -n | tail -1)
 if [ "${top:-0}" -ge 190 ] 2>/dev/null; then ok "Flink SQL counted the stream (reached ${top})"
 else bad "Flink SQL count reached only ${top:-0} (expected ~200)"; fi
@@ -281,10 +283,13 @@ done
 out=$($KT --describe --topic lab08-claims 2>/dev/null)
 assert_contains "durability contract on the topic" "min.insync.replicas=2" "$out"
 run CapstoneIngest 200 >/tmp/vl-ingest.log 2>&1 &
+INGEST_PID=$!
 sleep 8
 docker kill "$KBROKER2" >/dev/null 2>&1
 info "killed $KBROKER2 mid-ingest"
-wait %1 2>/dev/null
+# wait on the PID, not %1 -- job specs are unreliable without job control, and the
+# assert would otherwise read the log before the producer had finished writing it
+wait "$INGEST_PID" 2>/dev/null
 assert_contains "ingest survived the broker kill" "acknowledged=200" "$(cat /tmp/vl-ingest.log)"
 docker start "$KBROKER2" >/dev/null 2>&1; sleep 30
 isr=$($KT --describe --topic lab08-claims 2>/dev/null | grep -c "Isr: [0-9],[0-9],[0-9]")
