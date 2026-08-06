@@ -165,6 +165,22 @@ in the debugger** (Lab 03) and **breakpointing inside a transaction** to watch w
 > open — every lab's classes live side by side in it, so you can flick between Lab 02's
 > producer and Lab 04's transactional pipeline without reimporting anything.
 
+## Quick Start — One Command
+
+Each morning, from the repo root:
+
+```bash
+./start.sh              # the core cluster (3 brokers, Schema Registry, Kafka UI)
+./start.sh connect      # + Kafka Connect, Postgres, MinIO   (Lab 06)
+./start.sh flink        # + Flink                            (Lab 07)
+./start.sh all          # + Prometheus and Grafana           (Lab 08)
+```
+
+It fetches the latest course updates, starts what you need, waits until the brokers are
+genuinely healthy, and prints the URLs. Safe to re-run whenever something looks wrong.
+
+The sections below explain what it is doing, and how to run the pieces by hand.
+
 ## Bring Up the Core Cluster
 
 Run from the repository root (or any folder inside it — `docker compose` searches
