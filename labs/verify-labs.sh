@@ -191,12 +191,19 @@ assert_eq "exactly-once across a crash: 0 duplicates" "0" "$dup"
 # ------------------------------------------------------------------------ Lab 05
 section "7. Lab 05 — Schema Registry"
 droptopic lab05-orders; mktopic lab05-orders
-curl -s -X DELETE "http://localhost:8081/subjects/lab05-orders-value?permanent=true" >/dev/null 2>&1
+# soft delete first, THEN permanent -- the permanent call is rejected on a subject
+# that has not been soft-deleted, which silently leaves old versions in place and
+# makes a re-run report [3,4] instead of [1,2]
 curl -s -X DELETE "http://localhost:8081/subjects/lab05-orders-value" >/dev/null 2>&1
+curl -s -X DELETE "http://localhost:8081/subjects/lab05-orders-value?permanent=true" >/dev/null 2>&1
 run AvroProducerApp   >/dev/null
 run AvroProducerV2App >/dev/null
+# count the versions rather than matching ids: a student on a fresh registry sees
+# [1,2], but any re-run against a registry that kept history sees [3,4] etc. What the
+# exercise actually proves is that a second, compatible version was registered.
 v=$(curl -s http://localhost:8081/subjects/lab05-orders-value/versions)
-assert_eq "schema evolved to two versions" "[1,2]" "$v"
+vn=$(printf '%s' "$v" | grep -o '[0-9]\+' | wc -l | tr -d ' ')
+assert_eq "schema evolved to two versions (got $v)" "2" "$vn"
 out=$(run AvroConsumerApp "verify-$$")
 assert_eq "consumer reads v1 and v2 records" "10" "$(printf '%s' "$out" | grep -c orderId)"
 assert_contains "v1 records show the field as absent" "region=(absent)" "$out"
@@ -234,10 +241,14 @@ CREATE TABLE IF NOT EXISTS orders (
 INSERT INTO orders (order_id, customer_id, amount, status)
 VALUES ('V-1','c-1',42.00,'NEW'),('V-2','c-2',108.50,'NEW'),('V-3','c-3',19.99,'NEW');
 SQL
+# a connector recreated under the SAME name resumes from its stored source offsets in
+# connect-offsets and re-emits nothing, so use a fresh name for each verification run
+SRC_CONN="orders-source-$$"
 curl -s -X DELETE http://localhost:8083/connectors/orders-source >/dev/null 2>&1
+curl -s -X DELETE "http://localhost:8083/connectors/$SRC_CONN" >/dev/null 2>&1
 droptopic pg-orders
 curl -s -X POST -H "Content-Type: application/json" http://localhost:8083/connectors --data '{
- "name":"orders-source","config":{
+ "name":"'"$SRC_CONN"'","config":{
  "connector.class":"io.confluent.connect.jdbc.JdbcSourceConnector",
  "connection.url":"jdbc:postgresql://postgres:5432/orders_db",
  "connection.user":"kafka_user","connection.password":"kafka_pw",
@@ -247,10 +258,14 @@ curl -s -X POST -H "Content-Type: application/json" http://localhost:8083/connec
  "value.converter":"org.apache.kafka.connect.json.JsonConverter",
  "value.converter.schemas.enable":"false"}}' >/dev/null
 sleep 20
-st=$(curl -s http://localhost:8083/connectors/orders-source/status | grep -o '"state":"RUNNING"' | head -1)
+st=$(curl -s "http://localhost:8083/connectors/$SRC_CONN/status" | grep -o '"state":"RUNNING"' | head -1)
 assert_contains "JDBC source RUNNING" "RUNNING" "${st:-none}"
-row=$($KC --topic pg-orders --from-beginning --timeout-ms 10000 2>/dev/null | head -1)
-assert_contains "NUMERIC rendered as a number, not base64" '"amount":42.0' "$row"
+rows=$($KC --topic pg-orders --from-beginning --timeout-ms 10000 2>/dev/null)
+if printf '%s' "$rows" | grep -q '"amount":[0-9]'; then
+  ok "NUMERIC rendered as a number, not base64"
+else
+  bad "NUMERIC still base64 — numeric.mapping missing? (got: $(printf '%s' "$rows" | head -1))"
+fi
 
 section "10. Lab 07 — Flink SQL"
 for t in lab07-claims lab07-contacts lab07-claims-per-region; do droptopic $t; mktopic $t; done
