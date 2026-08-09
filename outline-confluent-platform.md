@@ -168,6 +168,17 @@ keyboard rather than only described.
 
 # Day 1 — The Confluent Platform Developer Environment
 
+*Getting productive inside the platform itself. Participants stop reaching for shell
+scripts and start working the way they will at their desks — through Control Center and
+the `confluent` CLI. The two client modules are the material that carries over from
+general Kafka work, and they are taught here against Confluent tooling: a producer is
+tuned by reading end-to-end latency in Control Center, and a broken consumer is diagnosed
+from a lag chart rather than from a log file.*
+
+**By the end of Day 1** participants have a running pipeline of their own — a tuned
+producer writing events and a consumer group reading them with correct commit semantics —
+and they can see all of it in Control Center.
+
 ## Module 1 — What Confluent Platform Adds to Apache Kafka
 
 **Topics covered**
@@ -320,7 +331,16 @@ keyboard rather than only described.
 
 # Day 2 — Data Contracts and Governance
 
-*The day that most sharply separates Confluent Platform from Apache Kafka.*
+*The day that most sharply separates Confluent Platform from Apache Kafka. The question
+it answers is the one that actually costs enterprises money: how do you stop bad data
+entering a topic that dozens of teams depend on? The answer builds in three steps — agree
+the shape of the data, enforce that agreement at the broker where no client can bypass it,
+then move data in and out of the platform without breaking the agreement.*
+
+**By the end of Day 2** the pipeline carries registered, evolvable schemas, the broker
+itself rejects anything off-contract, a PII field is encrypted, and data flows in from a
+database and out to object storage with poison records routed aside rather than stopping
+the pipeline.
 
 ## Module 4 — Confluent Schema Registry in Depth
 
@@ -474,6 +494,17 @@ keyboard rather than only described.
 ---
 
 # Day 3 — Stream Processing, Security, and Design
+
+*Turning a pipeline into an application. Processing moves into the stream rather than into
+a nightly batch; the security model is made explicit; and the platform features that
+genuinely change how a system is designed — effectively unlimited retention, mirrored
+clusters, HTTP access — are examined for what they make possible rather than as
+operational trivia. The day closes by breaking the whole thing on purpose.*
+
+**By the end of Day 3** participants have enriched and aggregated their stream in ksqlDB
+and queried it from Java, can write an access request their platform team could act on
+without a follow-up conversation, and have watched their own application survive a broker
+failure with no records lost.
 
 ## Module 7 — ksqlDB
 
@@ -675,6 +706,11 @@ partway through the day under metrics load, which costs classroom time to diagno
 
 Services are started by day rather than all at once, so no VM carries the full stack
 before it is needed.
+
+The participant VM deliberately does **not** host the Metadata Service, an identity
+source, or a second cluster. Those are what Module 8 and exercise 9.2 demonstrate, and
+they run on the instructor's environment rather than being provisioned sixteen times.
+Keeping them off the student image is what holds the VM at 16 GB.
 
 Client code is Java 17 + Maven, in a ready-made single Maven project — participants write
 lab classes, not build files. A one-command startup script brings the environment up each
