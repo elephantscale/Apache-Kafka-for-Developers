@@ -25,14 +25,24 @@ REST Proxy. Participants drive the platform through **Control Center and the
 (`kafka-topics.sh` and friends) appear only where they are still the right tool, and are
 named as such.
 
-**Six of the nine modules cover capability that does not exist in Apache Kafka.** The
-remaining three cover client development (producers, consumers, Connect) taught against
-Confluent tooling, so that a mis-tuned producer is diagnosed in Control Center rather than
-in a log file.
+The modules that cover client development — producers, consumers, Connect — are taught
+against Confluent tooling throughout, so that a mis-tuned producer is diagnosed in Control
+Center rather than in a log file.
 
-**This is a resumed delivery for the same participants** — the Intermediate course was
-paused because its stack sat closer to Apache Kafka than to Confluent Platform, and this
-outline is the rebuild on the platform you actually run.
+## A note on this delivery
+
+**This course is the result of feedback and a course correction.** The earlier
+Intermediate delivery was paused because its content sat closer to Apache Kafka than to
+the Confluent Platform this team actually runs. That was a fair call, and it is the kind
+of feedback we would far rather receive than not.
+
+We are grateful for the opportunity to make the correction and to continue the delivery
+with the same group. The pivot is substantive rather than cosmetic — the brokers are
+`cp-server` rather than Apache images, Control Center is the primary interface from the
+first exercise onward, governance moves to the broker where it can actually be enforced,
+and six of the nine modules cover capability that has no Apache Kafka equivalent at all.
+The sections that follow set out precisely which, and where participants meet each one,
+so the change can be checked rather than taken on trust.
 
 ## The course at a glance
 
