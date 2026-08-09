@@ -1,11 +1,14 @@
 # Confluent Platform for Developers
 
-**Format:** 3 days. **Roughly half the class time is spent at the keyboard.**
-Optional 4th day (see *Add-On Modules*).
-**Level:** Intermediate. Assumes Kafka fundamentals.
-**Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free.
-**Hands-on:** 9 modules, **32 participant exercises** plus 5 instructor-led demonstrations,
-one application built across all three days.
+© Elephant Scale, 9 August 2026
+
+- **Format:** 3 days, with an optional 4th day (see *Add-On Modules*)
+- **Level:** Intermediate — assumes Kafka fundamentals
+- **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free
+- **Teaching day:** 08:30 – 16:30, with an hour for lunch
+- **Hands-on:** roughly half the class time at the keyboard
+- **Structure:** 9 modules, **32 participant exercises**, 5 instructor-led demonstrations
+- **Continuity:** one application built across all three days
 
 ---
 
@@ -79,7 +82,7 @@ participants use it themselves.
 | **Tiered Storage** | KIP-405 exists in Apache 3.9+; Confluent's is older, with broader backend support | 9.1 |
 
 > Stated plainly for the technical reviewer: **Tiered Storage and Connect are the two rows
-> with a genuine Apache counterpart**, and they are labelled as such above. Every other row
+> with a genuine Apache counterpart**, and they are labeled as such above. Every other row
 > is capability that arrives only with Confluent Platform.
 
 ## How the course runs
@@ -202,7 +205,7 @@ and they can see all of it in Control Center.
 
 - Self-managed and fully managed side by side
 - What changes for application code, and what does not
-- What transfers if the organisation later moves to Cloud
+- What transfers if the organization later moves to Cloud
 
 ### 1.D Reading Confluent's documentation correctly
 
@@ -287,7 +290,7 @@ and they can see all of it in Control Center.
 ### 3.B Offset commits and delivery semantics
 
 - Auto-commit versus manual commit, and why auto-commit surprises people
-- `commitSync` and `commitAsync` — cost, blocking, and failure behaviour
+- `commitSync` and `commitAsync` — cost, blocking, and failure behavior
 - **Commit ordering is the whole game**: committing before processing gives at-most-once,
   after processing gives at-least-once
 - Why exactly-once needs more than a commit strategy
@@ -371,7 +374,7 @@ the pipeline.
 
 - The three formats side by side: tooling, code generation, payload size, readability
 - Where each is the sensible default
-- Migration realities when an organisation already has one of them
+- Migration realities when an organization already has one of them
 
 ### 4.E Composition and portability
 
@@ -632,7 +635,7 @@ they read failures and request bindings; they do not create them.
 
 - Byte-for-byte topic mirroring with offsets preserved
 - How that differs from MirrorMaker 2, and why offset translation matters
-- Consuming from a linked topic, and the failover contract an application must honour
+- Consuming from a linked topic, and the failover contract an application must honor
 - Use cases: disaster recovery, data locality, and migration
 
 ### 9.C Self-Balancing Clusters
@@ -658,7 +661,7 @@ they read failures and request bindings; they do not create them.
   the cold-read latency penalty and decide whether you would accept it.
 - **9.2 Demonstration** — Cluster Linking shown against a second cluster, which a single
   training VM cannot host. Consuming from a linked topic, and the failover contract an
-  application must honour, walked through together.
+  application must honor, walked through together.
 - **9.3 Build** — Produce and consume over HTTP through the REST Proxy with nothing but
   `curl` — the integration path for non-JVM callers.
 - **9.4 Capstone** — The full application under failure: schema-validated ingest, ksqlDB
