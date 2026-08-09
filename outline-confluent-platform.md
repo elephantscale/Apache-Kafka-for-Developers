@@ -4,7 +4,8 @@
 Optional 4th day (see *Add-On Modules*).
 **Level:** Intermediate. Assumes Kafka fundamentals.
 **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free.
-**Hands-on:** 9 modules, **36 exercises**, one application built across all three days.
+**Hands-on:** 9 modules, **32 participant exercises** plus 5 instructor-led demonstrations,
+one application built across all three days.
 
 ---
 
@@ -15,16 +16,20 @@ run** — and the distance between the two is where a great deal of developer ti
 This course closes it.
 
 Every module is delivered on a real Confluent Platform cluster: `cp-server` brokers,
-Control Center, Confluent Schema Registry, ksqlDB, Kafka Connect with Confluent Hub,
-REST Proxy, and RBAC. Participants drive the platform through **Control Center and the
+Control Center, Confluent Schema Registry, ksqlDB, Kafka Connect with Confluent Hub, and
+REST Proxy. Participants drive the platform through **Control Center and the
 `confluent` CLI** — the same interfaces they use at their desks. The Apache CLI tools
 (`kafka-topics.sh` and friends) appear only where they are still the right tool, and are
 named as such.
 
-**Six of the nine modules — 24 of the 36 exercises — cover capability that does not exist
-in Apache Kafka.** The remaining three cover client development (producers, consumers,
-Connect) taught against Confluent tooling, so that a mis-tuned producer is diagnosed in
-Control Center rather than in a log file.
+**Six of the nine modules cover capability that does not exist in Apache Kafka.** The
+remaining three cover client development (producers, consumers, Connect) taught against
+Confluent tooling, so that a mis-tuned producer is diagnosed in Control Center rather than
+in a log file.
+
+**This is a resumed delivery for the same participants** — the Intermediate course was
+paused because its stack sat closer to Apache Kafka than to Confluent Platform, and this
+outline is the rebuild on the platform you actually run.
 
 ## The course at a glance
 
@@ -37,12 +42,18 @@ Control Center rather than in a log file.
 | **2** | **5** | Data contracts and broker-side enforcement | 4 | Yes |
 | **2** | **6** | Kafka Connect the Confluent way | 4 | Confluent tooling |
 | **3** | **7** | ksqlDB | 4 | Yes |
-| **3** | **8** | RBAC and secure development | 4 | Yes |
-| **3** | **9** | Platform features that change application design | 4 | Yes |
+| **3** | **8** | RBAC and secure development | 1 + 4 demos | Yes |
+| **3** | **9** | Platform features that change application design | 3 + 1 demo | Yes |
 
-Nine modules, 36 numbered exercises, plus a *Go further* stretch task in every module.
-Six modules cover subject matter that does not exist in Apache Kafka; the other three
-cover client development taught through Confluent tooling.
+Nine modules, **32 participant exercises**, plus a *Go further* stretch task in every
+module. Six modules cover subject matter that does not exist in Apache Kafka; the other
+three cover client development taught through Confluent tooling.
+
+**Five items are instructor-led demonstrations rather than participant labs** — all of
+Module 8 (RBAC) and exercise 9.2 (Cluster Linking). Both need infrastructure that belongs
+to a platform team rather than a training VM: the Metadata Service with an enterprise
+identity source, and a second cluster to link to. They are taught and shown, not
+provisioned, which is also how developers meet them in practice.
 
 ## What is Confluent-specific, and where participants touch it
 
@@ -61,8 +72,8 @@ participants use it themselves.
 | **Client-Side Field-Level Encryption (CSFLE)** | Nothing equivalent | 5.3, 5.4 |
 | **Confluent Hub** — supported, versioned connectors | Community connectors only, unsupported | 6.1, 6.2 |
 | **ksqlDB** — streaming SQL, materialized views, pull queries | Kafka Streams (Java library, no SQL) | 7.1 – 7.4 |
-| **RBAC via the Metadata Service** — roles scoped to topics, groups, subjects, connectors | ACLs only — no roles, no principals service | 8.1 – 8.4 |
-| **Cluster Linking** — byte-for-byte topic mirroring, offset-preserving | MirrorMaker 2, with offset translation caveats | 9.2 |
+| **RBAC via the Metadata Service** — roles scoped to topics, groups, subjects, connectors | ACLs only — no roles, no principals service | Module 8 *(demonstrated)* |
+| **Cluster Linking** — byte-for-byte topic mirroring, offset-preserving | MirrorMaker 2, with offset translation caveats | 9.2 *(demonstrated)* |
 | **Self-Balancing Clusters** | Manual partition reassignment | Module 9 |
 | **REST Proxy** — produce and consume over HTTP | Nothing equivalent | 9.3 |
 | **Tiered Storage** | KIP-405 exists in Apache 3.9+; Confluent's is older, with broader backend support | 9.1 |
@@ -95,7 +106,7 @@ question.
 
 **One application, three days.** Rather than nine disposable labs, participants build a
 single event pipeline incrementally. Each module adds a stage to something that stays
-running, so the last day is spent hardening a system they have owned since Tuesday
+running, so the last day is spent hardening a system they have owned since the first
 morning rather than starting something new:
 
 | After module | What the application can do |
@@ -107,7 +118,7 @@ morning rather than starting something new:
 | **5** | The broker refuses off-contract data, and a PII field is encrypted in flight and at rest |
 | **6** | A database source feeds the pipeline, an object-store sink drains it, poison records go to a dead letter queue |
 | **7** | ksqlDB enriches and aggregates the stream into a materialized view an application can query |
-| **8** | Every component runs under its own least-privilege principal |
+| **8** | Its access requirements are written up as a role-binding request the platform team could act on |
 | **9** | It survives a broker loss with no data lost, replays history from tiered storage, and is reachable over HTTP |
 
 By the final afternoon they have an application, not a folder of snippets.
@@ -128,6 +139,10 @@ finish able to read what the operations team sees.
 - Comfort with the Linux command line
 - Kafka fundamentals: topics, partitions, offsets, producers, consumers, consumer groups
   (the 1-day *Introduction* course, or equivalent experience)
+
+Because this group has already covered the fundamentals with us, the course opens at
+working pace rather than re-teaching them. Where earlier material is needed it is recalled
+in a sentence, not repeated as a module.
 
 ## Objectives
 
@@ -550,16 +565,25 @@ keyboard rather than only described.
 - Where secrets belong in a deployed application
 - Writing an access request the platform team can act on without a follow-up conversation
 
-**Hands-on**
+**Demonstrated, not built**
 
-- **8.1 Probe** — Run your working application as an unprivileged principal. Read the exact
-  exception. Work out precisely which permission is missing.
-- **8.2 Build** — Create the role binding that fixes it. Re-run. It works.
-- **8.3 Break it** — Narrow the binding one scope at a time until it breaks again. You have
-  now found the true minimum privilege, empirically.
-- **8.4 Build** — Scope the Connect connector's own principal from Module 6.
-- *Go further* — Write the access request you would actually send your platform team,
-  with exact resource names and roles.
+RBAC requires the Metadata Service and an enterprise identity source — infrastructure
+that belongs to the platform team, not to a training VM. This module is therefore
+instructor-led at the keyboard, projected, with participants following the reasoning
+rather than provisioning their own. That matches how developers meet RBAC in practice:
+they read failures and request bindings; they do not create them.
+
+- **8.1 Demonstration** — The working application run as an unprivileged principal. The
+  exact exception, read together, and the group works out which permission is missing.
+- **8.2 Demonstration** — The role binding that fixes it, created and applied live. Re-run.
+  It works.
+- **8.3 Demonstration** — The binding narrowed one scope at a time until it breaks again,
+  finding true minimum privilege empirically in front of the room.
+- **8.4 Discussion** — Scoping the Connect connector's own principal from Module 6.
+- **Participant exercise** — Write the access request you would actually send your platform
+  team: exact resource names, roles, and scopes, for the application you have been building
+  all week. This is the artefact a developer really produces, and it is graded by whether
+  the platform team could act on it without a follow-up conversation.
 
 ## Module 9 — Platform Features That Change Application Design
 
@@ -601,13 +625,14 @@ keyboard rather than only described.
 
 - **9.1 Build** — Replay from a Tiered Storage offset older than local retention. Measure
   the cold-read latency penalty and decide whether you would accept it.
-- **9.2 Build** — Consume a topic that lives on another cluster via Cluster Linking.
-  Walk the failover contract.
+- **9.2 Demonstration** — Cluster Linking shown against a second cluster, which a single
+  training VM cannot host. Consuming from a linked topic, and the failover contract an
+  application must honour, walked through together.
 - **9.3 Build** — Produce and consume over HTTP through the REST Proxy with nothing but
   `curl` — the integration path for non-JVM callers.
 - **9.4 Capstone** — The full application under failure: schema-validated ingest, ksqlDB
-  enrichment, Connect sink, RBAC-scoped principals. Kill a broker mid-run and **prove zero
-  loss from Control Center**. Then replay history from tiered storage.
+  enrichment, Connect sink. Kill a broker mid-run and **prove zero loss from Control
+  Center**. Then replay history from tiered storage.
 - *Go further* — Add a quota, saturate it, and observe what your client does when throttled.
 
 ---
