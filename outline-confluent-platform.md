@@ -7,7 +7,7 @@
 - **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free
 - **Teaching day:** 08:30 – 16:30, with an hour for lunch
 - **Hands-on:** roughly half the class time at the keyboard
-- **Structure:** 9 modules, **32 participant exercises**, 5 instructor-led demonstrations
+- **Structure:** 9 modules, **31 participant exercises**, 6 instructor-led demonstrations
 - **Continuity:** one application built across all three days
 
 ---
@@ -46,17 +46,19 @@ outline is the rebuild on the platform you actually run.
 | **2** | **6** | Kafka Connect the Confluent way | 4 | Confluent tooling |
 | **3** | **7** | ksqlDB | 4 | Yes |
 | **3** | **8** | RBAC and secure development | 1 + 4 demos | Yes |
-| **3** | **9** | Platform features that change application design | 3 + 1 demo | Yes |
+| **3** | **9** | Platform features that change application design | 2 + 2 demos | Yes |
 
-Nine modules, **32 participant exercises**, plus a *Go further* stretch task in every
+Nine modules, **31 participant exercises**, plus a *Go further* stretch task in every
 module. Six modules cover subject matter that does not exist in Apache Kafka; the other
 three cover client development taught through Confluent tooling.
 
-**Five items are instructor-led demonstrations rather than participant labs** — all of
-Module 8 (RBAC) and exercise 9.2 (Cluster Linking). Both need infrastructure that belongs
-to a platform team rather than a training VM: the Metadata Service with an enterprise
-identity source, and a second cluster to link to. They are taught and shown, not
-provisioned, which is also how developers meet them in practice.
+**Six items are instructor-led demonstrations rather than participant labs** — all of
+Module 8 (RBAC), exercise 9.1 (Tiered Storage), and exercise 9.2 (Cluster Linking). Each
+needs infrastructure that belongs to a platform team rather than a training VM: the
+Metadata Service with an enterprise identity source, an object-storage tier holding
+history older than local retention, and a second cluster to link to. They are taught and
+shown, not provisioned — which is also how developers meet all three in practice, since
+none of them is a developer's to configure.
 
 ## What is Confluent-specific, and where participants touch it
 
@@ -79,7 +81,7 @@ participants use it themselves.
 | **Cluster Linking** — byte-for-byte topic mirroring, offset-preserving | MirrorMaker 2, with offset translation caveats | 9.2 *(demonstrated)* |
 | **Self-Balancing Clusters** | Manual partition reassignment | Module 9 |
 | **REST Proxy** — produce and consume over HTTP | Nothing equivalent | 9.3 |
-| **Tiered Storage** | KIP-405 exists in Apache 3.9+; Confluent's is older, with broader backend support | 9.1 |
+| **Tiered Storage** | KIP-405 exists in Apache 3.9+; Confluent's is older, with broader backend support | 9.1 *(demonstrated)* |
 
 > Stated plainly for the technical reviewer: **Tiered Storage and Connect are the two rows
 > with a genuine Apache counterpart**, and they are labeled as such above. Every other row
@@ -122,7 +124,7 @@ morning rather than starting something new:
 | **6** | A database source feeds the pipeline, an object-store sink drains it, poison records go to a dead letter queue |
 | **7** | ksqlDB enriches and aggregates the stream into a materialized view an application can query |
 | **8** | Its access requirements are written up as a role-binding request the platform team could act on |
-| **9** | It survives a broker loss with no data lost, replays history from tiered storage, and is reachable over HTTP |
+| **9** | It survives a broker loss with no data lost, replays from an earlier offset to rebuild, and is reachable over HTTP |
 
 By the final afternoon they have an application, not a folder of snippets.
 
@@ -657,8 +659,9 @@ they read failures and request bindings; they do not create them.
 
 **Hands-on**
 
-- **9.1 Build** — Replay from a Tiered Storage offset older than local retention. Measure
-  the cold-read latency penalty and decide whether you would accept it.
+- **9.1 Demonstration** — Replay from a Tiered Storage offset older than local retention,
+  against a cluster with real history behind it. The cold-read latency penalty measured
+  live, and the room decides together whether they would accept it in their own design.
 - **9.2 Demonstration** — Cluster Linking shown against a second cluster, which a single
   training VM cannot host. Consuming from a linked topic, and the failover contract an
   application must honor, walked through together.
@@ -666,7 +669,7 @@ they read failures and request bindings; they do not create them.
   `curl` — the integration path for non-JVM callers.
 - **9.4 Capstone** — The full application under failure: schema-validated ingest, ksqlDB
   enrichment, Connect sink. Kill a broker mid-run and **prove zero loss from Control
-  Center**. Then replay history from tiered storage.
+  Center**. Then replay the stream from an earlier offset and watch it rebuild.
 - *Go further* — Add a quota, saturate it, and observe what your client does when throttled.
 
 ---
@@ -711,9 +714,11 @@ Services are started by day rather than all at once, so no VM carries the full s
 before it is needed.
 
 The participant VM deliberately does **not** host the Metadata Service, an identity
-source, or a second cluster. Those are what Module 8 and exercise 9.2 demonstrate, and
-they run on the instructor's environment rather than being provisioned sixteen times.
-Keeping them off the student image is what holds the VM at 16 GB.
+source, a tiered-storage backend with real history behind it, or a second cluster. Those
+are what Module 8 and exercises 9.1 and 9.2 demonstrate, and they run on the instructor's
+environment rather than being provisioned sixteen times. Keeping them off the student
+image is what holds the VM at 16 GB — and a tiered-storage replay is only meaningful
+against a topic with more history than a classroom cluster accumulates in three days.
 
 **The `confluent` CLI is installed on each VM**, not inside a container — it is one of the
 two interfaces this course teaches, alongside Control Center. It drives the cluster through
