@@ -25,12 +25,17 @@
 #   HOST       (:9094)  Clients on your machine. Advertised as localhost:909X
 #                       and published to that host port. NOT used in containers.
 #
-# BRING-UP, BY DAY (keeps peak memory down; each day adds to the last):
-#   Day 1  docker compose -f docker-compose-confluent.yml up -d
-#   Day 2  docker compose -f docker-compose-confluent.yml --profile connect up -d
-#   Day 3  docker compose -f docker-compose-confluent.yml --profile connect \
+# BRING-UP, BY DAY (keeps peak memory down; day 2 adds to day 1):
+#   Day 1  (Modules 1-5: platform, producers, consumers, Schema Registry, contracts)
+#          docker compose -f docker-compose-confluent.yml up -d
+#
+#   Day 2  (Modules 6-9 + capstone: Connect, ksqlDB, RBAC, platform features)
+#          docker compose -f docker-compose-confluent.yml --profile connect \
 #                                                        --profile ksqldb \
 #                                                        --profile restproxy up -d
+#
+#   Optional Day 3 (participants run the demonstrated exercises themselves)
+#          same stack as Day 2 -- no additional provisioning
 #
 # LICENSING:
 #   The client holds a Confluent subscription, so the enterprise features taught

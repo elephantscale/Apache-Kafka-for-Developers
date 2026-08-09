@@ -2,13 +2,13 @@
 
 © Elephant Scale, 9 August 2026
 
-- **Format:** 3 days, with an optional 4th day (see *Add-On Modules*)
+- **Format:** 2 days, with an **optional 3rd day** for teams who want to build it themselves
 - **Level:** Intermediate — assumes Kafka fundamentals
 - **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free
 - **Teaching day:** 08:30 – 16:30, with an hour for lunch
 - **Hands-on:** roughly half the class time at the keyboard
-- **Structure:** 9 modules, **31 participant exercises**, 6 instructor-led demonstrations
-- **Continuity:** one application built across all three days
+- **Structure:** all 9 modules across the 2 core days — **14 participant exercises**, 23 instructor-led demonstrations
+- **Continuity:** one application built across both days
 
 ---
 
@@ -46,37 +46,48 @@ so the change can be checked rather than taken on trust.
 
 ## The course at a glance
 
-| Day | Module | Focus | Exercises | Confluent-only subject |
-|---|---|---|---|---|
-| **1** | **1** | What Confluent Platform adds to Apache Kafka | 4 | Yes |
-| **1** | **2** | Producers on Confluent Platform | 4 | Confluent tooling |
-| **1** | **3** | Consumers, groups, and lag in Control Center | 4 | Confluent tooling |
-| **2** | **4** | Confluent Schema Registry in depth | 4 | Yes |
-| **2** | **5** | Data contracts and broker-side enforcement | 4 | Yes |
-| **2** | **6** | Kafka Connect the Confluent way | 4 | Confluent tooling |
-| **3** | **7** | ksqlDB | 4 | Yes |
-| **3** | **8** | RBAC and secure development | 1 + 4 demos | Yes |
-| **3** | **9** | Platform features that change application design | 2 + 2 demos | Yes |
+| Day | Module | Focus | Format | Time | Confluent-only subject |
+|---|---|---|---|---|---|
+| **1** | **1** | What Confluent Platform adds to Apache Kafka | Demonstrated | 45 min | Yes |
+| **1** | **2** | Producers on Confluent Platform | Demonstrated | 60 min | Confluent tooling |
+| **1** | **3** | Consumers, groups, and lag in Control Center | **Hands-on** | 100 min | Confluent tooling |
+| **1** | **4** | Confluent Schema Registry in depth | Demonstrated | 60 min | Yes |
+| **1** | **5** | Data contracts and broker-side enforcement | **Hands-on** | 95 min | Yes |
+| **2** | **6** | Kafka Connect the Confluent way | Demonstrated | 65 min | Confluent tooling |
+| **2** | **7** | ksqlDB | **Hands-on** | 100 min | Yes |
+| **2** | **8** | RBAC and secure development | Demonstrated | 55 min | Yes |
+| **2** | **9** | Platform features that change application design | Demonstrated | 60 min | Yes |
+| **2** | — | **Capstone** — the whole application under failure | **Hands-on** | 80 min | Yes |
 
-Nine modules, **31 participant exercises**, plus a *Go further* stretch task in every
-module. Six modules cover subject matter that does not exist in Apache Kafka; the other
-three cover client development taught through Confluent tooling.
+**All nine modules are delivered inside the two core days.** Nothing is cut; what changes
+is who is at the keyboard. Three modules and the capstone are full participant labs; the
+remaining six are led from the front, with the instructor driving and the room reading
+the result together.
 
-**Six items are instructor-led demonstrations rather than participant labs** — all of
-Module 8 (RBAC), exercise 9.1 (Tiered Storage), and exercise 9.2 (Cluster Linking). Each
-needs infrastructure that belongs to a platform team rather than a training VM: the
-Metadata Service with an enterprise identity source, an object-storage tier holding
-history older than local retention, and a second cluster to link to. They are taught and
-shown, not provisioned — which is also how developers meet all three in practice, since
-none of them is a developer's to configure.
+The two figures below look inconsistent and are not: **14 participant exercises against
+23 demonstrations, yet roughly half the class time at the keyboard.** A lab runs far
+longer than a demonstration — 375 of the 720 teaching minutes are hands-on, because the
+four hands-on blocks are the long ones.
+
+**Why these four are hands-on.** They are the moments that do not survive being watched:
+
+- **Module 3** — moving the commit before the processing, and seeing Control Center report
+  **LAG = 0** while your own application quietly drops records
+- **Module 5** — producing a record and having the **broker itself** reject it
+- **Module 7** — writing streaming SQL, which is only convincing once you have typed it
+- **Capstone** — killing a broker under your own running pipeline and proving nothing was lost
+
+Six modules are demonstrated because watching them costs little: the concepts land from a
+clear walkthrough, and the configuration is rarely a developer's to write anyway.
 
 ## What is Confluent-specific, and where participants touch it
 
 The table below is the course's answer to "is this just Apache Kafka?" — every row is a
-capability the Apache distribution does not ship, mapped to the exercise where
-participants use it themselves.
+capability the Apache distribution does not ship, mapped to where it appears in the
+course. Rows marked *(demonstrated)* are shown from the front; the rest sit inside
+exercises participants run or follow along with.
 
-| Confluent Platform capability | In Apache Kafka | Exercises |
+| Confluent Platform capability | In Apache Kafka | Where it appears |
 |---|---|---|
 | **Control Center** — cluster, topic, consumer-lag and end-to-end latency UI | Nothing equivalent | 1.1, 1.2, 1.4, 2.2, 3.2, 3.3, 6.1, 6.3, 9.4 |
 | **`confluent` CLI** | Nothing equivalent | 1.2, Module 1 *Go further* |
@@ -99,30 +110,44 @@ participants use it themselves.
 
 ## How the course runs
 
-This is a **workshop, not a lecture with exercises attached**. Every module follows the
-same four-beat rhythm, and three of the four beats are hands-on:
+Modules come in two shapes. Both end with something broken on purpose, because the failure
+is usually where the understanding is.
+
+**Hands-on module — ~100 min** (Modules 3, 5, 7, and the capstone)
 
 | Beat | Time | What happens |
 |---|---|---|
 | **Probe** | ~15 min | A hands-on task participants cannot yet complete. They hit the wall first. |
 | **Explain** | ~30 min | The concept — delivered as the answer to what they just ran into. |
-| **Build** | ~50 min | The substantial lab. Working code or working configuration. |
+| **Build** | ~40 min | The substantial lab. Working code or working configuration. |
 | **Break it** | ~15 min | Deliberately break what they built and read the failure. |
 
-**The teaching day is 08:30 to 16:30 with an hour for lunch.** Three modules a day, two
-breaks, and time at the end of each afternoon to extend the running application. Timings
-above are a rhythm, not a stopwatch — the instructor moves the boundary when a room needs
-longer on something, which is the point of the *Go further* tasks.
-
-The *Probe* is what makes this stick. Participants measure a slow producer before anyone
+The *Probe* is what makes these stick. Participants measure a slow producer before anyone
 says the word `linger.ms`; they watch a consumer group leave two members idle before
 anyone explains partition assignment. The explanation lands because they already have the
 question.
 
-**One application, three days.** Rather than nine disposable labs, participants build a
-single event pipeline incrementally. Each module adds a stage to something that stays
-running, so the last day is spent hardening a system they have owned since the first
-morning rather than starting something new:
+**Demonstrated module — ~60 min** (Modules 1, 2, 4, 6, 8, 9)
+
+| Beat | Time | What happens |
+|---|---|---|
+| **Explain** | ~25 min | The concept, with the platform on screen rather than slides. |
+| **Show** | ~25 min | The instructor drives it live — the same lab, run once, at the front. |
+| **Break it** | ~10 min | The failure induced deliberately, and read together. |
+
+Participants follow with the environment open in front of them. Every demonstrated
+exercise is written up in full in the lab guide they keep, so anyone can run it afterwards
+— and the **optional third day** exists precisely to do that with an instructor in the room.
+
+**The teaching day is 08:30 to 16:30 with an hour for lunch** — about seven hours, of
+which roughly six are module time once breaks are taken out. Timings are a rhythm, not a
+stopwatch; the instructor moves the boundary when a room needs longer on something.
+
+**One application, start to finish.** Rather than nine disconnected labs, the course
+builds a single event pipeline incrementally. Each module adds a stage to something that
+stays running, whether the room builds that stage or watches it built, so the capstone
+hardens a system they have followed since the first morning rather than starting
+something new:
 
 | After module | What the application can do |
 |---|---|
@@ -181,18 +206,21 @@ keyboard rather than only described.
 
 ---
 
-# Day 1 — The Confluent Platform Developer Environment
+# Day 1 — The Platform, the Clients, and the Data Contract
 
-*Getting productive inside the platform itself. Participants stop reaching for shell
-scripts and start working the way they will at their desks — through Control Center and
-the `confluent` CLI. The two client modules are the material that carries over from
-general Kafka work, and they are taught here against Confluent tooling: a producer is
-tuned by reading end-to-end latency in Control Center, and a broken consumer is diagnosed
-from a lag chart rather than from a log file.*
+*Modules 1–5. Two jobs in one day. The morning gets everyone productive inside the
+platform itself — Control Center and the `confluent` CLI rather than shell scripts — and
+through the client material that carries over from general Kafka work, taught here against
+Confluent tooling: a producer tuned by reading end-to-end latency in Control Center, a
+broken consumer diagnosed from a lag chart rather than a log file. The afternoon turns to
+what most sharply separates Confluent Platform from Apache Kafka — agreeing the shape of
+the data, then enforcing that agreement at the broker, where no client can bypass it.*
 
-**By the end of Day 1** participants have a running pipeline of their own — a tuned
-producer writing events and a consumer group reading them with correct commit semantics —
-and they can see all of it in Control Center.
+**Hands-on today:** Module 3 (consumers and lag) and Module 5 (broker-side enforcement).
+
+**By the end of Day 1** the pipeline is running and visible in Control Center, every event
+carries a registered schema that can evolve without breaking readers, the broker itself
+rejects anything off-contract, and a PII field is encrypted.
 
 ## Module 1 — What Confluent Platform Adds to Apache Kafka
 
@@ -225,11 +253,13 @@ and they can see all of it in Control Center.
 - Telling Platform docs from Cloud docs — the most common source of wasted time
 - Spotting whether a documented feature is Community or Enterprise before relying on it
 
-**Hands-on**
+**Demonstrated** — the instructor drives this at the front; participants follow with the
+environment open. Every step is written up in full in the lab guide, and the optional third
+day is time to run it yourself.
 
 - **1.1 Probe** — Given a running cluster and nothing else: how many brokers, where do
   schemas live, who is consuming right now? Find out using only Control Center.
-- **1.2 Build** — Create topics, inspect partitions and replicas, produce, and browse
+- **1.2 Shown** — Create topics, inspect partitions and replicas, produce, and browse
   messages from Control Center and the `confluent` CLI. No shell scripts.
 - **1.3 Compare** — Do the same tasks with `kafka-topics.sh`. Decide, as a group, when each
   tool is the right one.
@@ -275,13 +305,15 @@ and they can see all of it in Control Center.
 - Reading producer end-to-end latency in Control Center
 - Diagnosing a mis-tuned producer from the UI rather than from log files
 
-**Hands-on**
+**Demonstrated** — the instructor drives this at the front; participants follow with the
+environment open. Every step is written up in full in the lab guide, and the optional third
+day is time to run it yourself.
 
 - **2.1 Probe** — Run the supplied producer. Measure its throughput. Write your number on
   the whiteboard next to everyone else's. Nobody has said `linger.ms` yet.
-- **2.2 Build** — Add the Confluent Monitoring Interceptor — two lines of config — and watch
+- **2.2 Shown** — Add the Confluent Monitoring Interceptor — two lines of config — and watch
   your producer appear in Control Center with end-to-end latency.
-- **2.3 Build** — Sweep `linger.ms`, `batch.size`, and `compression.type`. Chart throughput
+- **2.3 Shown** — Sweep `linger.ms`, `batch.size`, and `compression.type`. Chart throughput
   against latency. Find the knee in the curve.
 - **2.4 Break it** — Set `acks=0`, kill a broker mid-run, and count exactly what was lost.
   Then set `acks=all` and repeat.
@@ -329,7 +361,7 @@ and they can see all of it in Control Center.
   dropping records
 - Consumer-group views the operations team will be watching
 
-**Hands-on**
+**Hands-on** — participants build this themselves.
 
 - **3.1 Probe** — Start five consumers in one group against a 3-partition topic. Two do
   nothing. Work out why before it is explained.
@@ -343,19 +375,6 @@ and they can see all of it in Control Center.
   the partition count.
 
 ---
-
-# Day 2 — Data Contracts and Governance
-
-*The day that most sharply separates Confluent Platform from Apache Kafka. The question
-it answers is the one that actually costs enterprises money: how do you stop bad data
-entering a topic that dozens of teams depend on? The answer builds in three steps — agree
-the shape of the data, enforce that agreement at the broker where no client can bypass it,
-then move data in and out of the platform without breaking the agreement.*
-
-**By the end of Day 2** the pipeline carries registered, evolvable schemas, the broker
-itself rejects anything off-contract, a PII field is encrypted, and data flows in from a
-database and out to object storage with poison records routed aside rather than stopping
-the pipeline.
 
 ## Module 4 — Confluent Schema Registry in Depth
 
@@ -394,15 +413,17 @@ the pipeline.
 - Schema Linking: moving schemas between development, test, and production
 - Keeping registries consistent across environments
 
-**Hands-on**
+**Demonstrated** — the instructor drives this at the front; participants follow with the
+environment open. Every step is written up in full in the lab guide, and the optional third
+day is time to run it yourself.
 
 - **4.1 Probe** — Dump the raw bytes of a record. Find the magic byte and the schema ID.
   Resolve that ID against the registry by hand.
-- **4.2 Build** — Register v1, run a consumer, evolve to v2 under BACKWARD compatibility,
+- **4.2 Shown** — Register v1, run a consumer, evolve to v2 under BACKWARD compatibility,
   and confirm the old consumer survives untouched.
 - **4.3 Break it** — Attempt an incompatible change and read the rejection. Switch the
   subject to FORWARD and watch which changes are now legal and which are not.
-- **4.4 Build** — Manage schemas from Control Center and from the REST API; compare.
+- **4.4 Shown** — Manage schemas from Control Center and from the REST API; compare.
 - *Go further* — Compose two schemas with a schema reference instead of copying fields.
 
 ## Module 5 — Data Contracts and Broker-Side Enforcement
@@ -438,7 +459,7 @@ the pipeline.
 - Performance and operational cost of broker-side validation
 - Designing a rollout that does not break producers already in flight
 
-**Hands-on**
+**Hands-on** — participants build this themselves.
 
 - **5.1 Probe** — Produce a well-formed but unregistered record to a schema-backed topic
   using a plain `StringSerializer`. It lands. Everyone sees that nothing stopped it.
@@ -450,6 +471,23 @@ the pipeline.
   application should do about that.
 - *Go further* — Add a domain rule that rejects a semantically invalid but
   schema-valid record.
+
+# Day 2 — Pipelines, Processing, and Hardening
+
+*Modules 6–9, then the capstone. Turning a pipeline into a system. Data moves in and out
+through Connect, processing moves into the stream rather than a nightly batch, the security
+model is made explicit, and the platform features that genuinely change how a system is
+designed — effectively unlimited retention, mirrored clusters, HTTP access — are examined
+for what they make possible rather than as operational trivia. The day closes by breaking
+the whole thing on purpose.*
+
+**Hands-on today:** Module 7 (ksqlDB) and the capstone.
+
+**By the end of Day 2** data flows in from a database and out to object storage with poison
+records routed aside, ksqlDB enriches and aggregates the stream into a materialized view
+queried from Java, participants can write an access request their platform team could act
+on, and they have watched their own application survive a broker failure with no records
+lost.
 
 ## Module 6 — Kafka Connect the Confluent Way
 
@@ -494,11 +532,13 @@ the pipeline.
 - Scoping a connector's permissions to the topics it genuinely needs
 - Keeping credentials out of connector configuration
 
-**Hands-on**
+**Demonstrated** — the instructor drives this at the front; participants follow with the
+environment open. Every step is written up in full in the lab guide, and the optional third
+day is time to run it yourself.
 
-- **6.1 Build** — Deploy a JDBC source connector from Postgres, configured and started
+- **6.1 Shown** — Deploy a JDBC source connector from Postgres, configured and started
   entirely in Control Center.
-- **6.2 Build** — Add an S3 sink. Verify the objects landed and inspect their format.
+- **6.2 Shown** — Add an S3 sink. Verify the objects landed and inspect their format.
 - **6.3 Break it** — Introduce a converter mismatch, the single most common Connect
   failure in production. Diagnose it from the failed task's trace in Control Center, then
   fix it.
@@ -507,19 +547,6 @@ the pipeline.
 - *Go further* — Chain two SMTs to reshape records in flight, without touching the producer.
 
 ---
-
-# Day 3 — Stream Processing, Security, and Design
-
-*Turning a pipeline into an application. Processing moves into the stream rather than into
-a nightly batch; the security model is made explicit; and the platform features that
-genuinely change how a system is designed — effectively unlimited retention, mirrored
-clusters, HTTP access — are examined for what they make possible rather than as
-operational trivia. The day closes by breaking the whole thing on purpose.*
-
-**By the end of Day 3** participants have enriched and aggregated their stream in ksqlDB
-and queried it from Java, can write an access request their platform team could act on
-without a follow-up conversation, and have watched their own application survive a broker
-failure with no records lost.
 
 ## Module 7 — ksqlDB
 
@@ -564,7 +591,7 @@ failure with no records lost.
 - Where Confluent is heading with Apache Flink
 - An honest comparison, including what SQL gives up
 
-**Hands-on**
+**Hands-on** — participants build this themselves.
 
 - **7.1 Probe** — Re-express Day 1's Java enrichment pipeline in ksqlDB. Count the lines of
   each. Then discuss honestly what you gave up.
@@ -667,7 +694,11 @@ they read failures and request bindings; they do not create them.
 - Quotas and throttling — what a throttled client experiences, and how to behave well
 - Reading the signals that predict trouble before an incident
 
-**Hands-on**
+**Demonstrated, then the capstone**
+
+The platform features are shown from the front — none of them is a developer's to
+configure. The capstone that closes the course is the opposite: everyone at the keyboard,
+on the application they have followed since the first morning.
 
 - **9.1 Demonstration** — Replay from a Tiered Storage offset older than local retention,
   against a cluster with real history behind it. The cold-read latency penalty measured
@@ -675,16 +706,41 @@ they read failures and request bindings; they do not create them.
 - **9.2 Demonstration** — Cluster Linking shown against a second cluster, which a single
   training VM cannot host. Consuming from a linked topic, and the failover contract an
   application must honor, walked through together.
-- **9.3 Build** — Produce and consume over HTTP through the REST Proxy with nothing but
-  `curl` — the integration path for non-JVM callers.
-- **9.4 Capstone** — The full application under failure: schema-validated ingest, ksqlDB
+- **9.3 Demonstration** — Producing and consuming over HTTP through the REST Proxy with
+  nothing but `curl` — the integration path for non-JVM callers.
+- **9.4 Capstone — hands-on** — The full application under failure: schema-validated ingest, ksqlDB
   enrichment, Connect sink. Kill a broker mid-run and **prove zero loss from Control
   Center**. Then replay the stream from an earlier offset and watch it rebuild.
 - *Go further* — Add a quota, saturate it, and observe what your client does when throttled.
 
 ---
 
-## Add-On Modules (optional Day 4, or substitutions)
+# Optional Day 3 — Build It Yourself
+
+The two core days cover all nine modules, but six of them are demonstrated rather than
+built. **The optional third day is where the room runs them.**
+
+It is not new material and it needs no new preparation. Every demonstrated exercise is
+written up in full in the lab guide participants keep, and every module carries a *Go
+further* stretch task. The third day is instructor-supported time to work through them on
+your own cluster, with someone in the room when something does not behave.
+
+| The day is structured around | Drawn from |
+|---|---|
+| **Driving the platform yourself** — Control Center and the `confluent` CLI, end to end | Module 1 |
+| **Tuning a producer** — sweep `linger.ms`, `batch.size`, compression; find the knee in the curve | Module 2 |
+| **Evolving a schema** — register v1, evolve to v2 under BACKWARD, break it under FORWARD | Module 4 |
+| **Building the Connect pipeline** — JDBC source, S3 sink, a converter mismatch to diagnose, a poison record to route | Module 6 |
+| **The *Go further* tasks** — custom partitioner, schema references, chained SMTs, exactly-once under restart, quota throttling | All modules |
+
+**Who it is for.** Teams who will be writing this code themselves within weeks, and teams
+with mixed experience where the slower half benefits from a second pass. Teams who mainly
+needed to understand the platform and make design decisions will get what they need from
+the two core days.
+
+## Add-On Modules (substitutions, or a further day)
+
+Any of these can replace part of the optional third day, or extend the course further.
 
 | Module | Fits when |
 |---|---|
@@ -708,27 +764,28 @@ is blocked by another participant's mistake.
 | Brokers ×3 | `confluentinc/cp-server:7.9.9` | KRaft mode, combined broker+controller |
 | Control Center | `confluentinc/cp-enterprise-control-center:7.9.9` | Primary UI for the whole course |
 | Schema Registry | `confluentinc/cp-schema-registry:7.9.9` | |
-| ksqlDB Server + CLI | `confluentinc/cp-ksqldb-server:7.9.9`, `cp-ksqldb-cli:7.9.9` | Day 3 |
+| ksqlDB Server + CLI | `confluentinc/cp-ksqldb-server:7.9.9`, `cp-ksqldb-cli:7.9.9` | Day 2 |
 | Kafka Connect | `confluentinc/cp-kafka-connect:7.9.9` | JDBC + S3 from Confluent Hub |
-| REST Proxy | `confluentinc/cp-kafka-rest:7.9.9` | Day 3 |
+| REST Proxy | `confluentinc/cp-kafka-rest:7.9.9` | Day 2 |
 | Postgres, MinIO | `postgres:16`, `minio/minio` | Connect endpoints, not Kafka components |
 
 **VM sizing — 4 vCPU, 16 GB RAM, 40 GB free disk per participant.** These are measured
 numbers, not estimates: the Day 1 core alone (three brokers, Schema Registry, Control
 Center) holds 4.5 GB resident, and Control Center accounts for the largest single share.
-Days 2 and 3 add Connect, ksqlDB, and REST Proxy on top, alongside a Maven build and an
-IDE. **A 12 GB VM is not sufficient** — Control Center starts on less and then fails
-partway through the day under metrics load, which costs classroom time to diagnose.
+Day 2 adds Connect, ksqlDB, and REST Proxy on top, alongside a Maven build and an IDE.
+**A 12 GB VM is not sufficient** — Control Center starts on less and then fails partway
+through the day under metrics load, which costs classroom time to diagnose.
 
 Services are started by day rather than all at once, so no VM carries the full stack
-before it is needed.
+before it is needed. The optional third day runs the same stack as Day 2 — it needs no
+additional provisioning.
 
 The participant VM deliberately does **not** host the Metadata Service, an identity
 source, a tiered-storage backend with real history behind it, or a second cluster. Those
 are what Module 8 and exercises 9.1 and 9.2 demonstrate, and they run on the instructor's
 environment rather than being provisioned sixteen times. Keeping them off the student
 image is what holds the VM at 16 GB — and a tiered-storage replay is only meaningful
-against a topic with more history than a classroom cluster accumulates in three days.
+against a topic with more history than a classroom cluster accumulates in a few days.
 
 **The `confluent` CLI is installed on each VM**, not inside a container — it is one of the
 two interfaces this course teaches, alongside Control Center. It drives the cluster through
