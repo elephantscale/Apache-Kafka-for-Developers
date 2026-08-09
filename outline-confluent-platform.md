@@ -26,6 +26,24 @@ in Apache Kafka.** The remaining three cover client development (producers, cons
 Connect) taught against Confluent tooling, so that a mis-tuned producer is diagnosed in
 Control Center rather than in a log file.
 
+## The course at a glance
+
+| Day | Module | Focus | Exercises | Confluent-only subject |
+|---|---|---|---|---|
+| **1** | **1** | What Confluent Platform adds to Apache Kafka | 4 | Yes |
+| **1** | **2** | Producers on Confluent Platform | 4 | Confluent tooling |
+| **1** | **3** | Consumers, groups, and lag in Control Center | 4 | Confluent tooling |
+| **2** | **4** | Confluent Schema Registry in depth | 4 | Yes |
+| **2** | **5** | Data contracts and broker-side enforcement | 4 | Yes |
+| **2** | **6** | Kafka Connect the Confluent way | 4 | Confluent tooling |
+| **3** | **7** | ksqlDB | 4 | Yes |
+| **3** | **8** | RBAC and secure development | 4 | Yes |
+| **3** | **9** | Platform features that change application design | 4 | Yes |
+
+Nine modules, 36 numbered exercises, plus a *Go further* stretch task in every module.
+Six modules cover subject matter that does not exist in Apache Kafka; the other three
+cover client development taught through Confluent tooling.
+
 ## What is Confluent-specific, and where participants touch it
 
 The table below is the course's answer to "is this just Apache Kafka?" — every row is a
@@ -76,9 +94,23 @@ anyone explains partition assignment. The explanation lands because they already
 question.
 
 **One application, three days.** Rather than nine disposable labs, participants build a
-single event pipeline incrementally: ingest → schema-validated contract → enrichment →
-sink → secured → survivable. Each module adds a stage to something that stays running.
-By Friday afternoon they have an application, not a folder of snippets.
+single event pipeline incrementally. Each module adds a stage to something that stays
+running, so the last day is spent hardening a system they have owned since Tuesday
+morning rather than starting something new:
+
+| After module | What the application can do |
+|---|---|
+| **1** | Topics exist; the cluster can be inspected and driven from Control Center |
+| **2** | A tuned producer writes events, visible in Control Center with end-to-end latency |
+| **3** | A consumer group reads them with correct commit semantics, and its lag is readable |
+| **4** | Every event carries a registered schema that can be evolved without breaking readers |
+| **5** | The broker refuses off-contract data, and a PII field is encrypted in flight and at rest |
+| **6** | A database source feeds the pipeline, an object-store sink drains it, poison records go to a dead letter queue |
+| **7** | ksqlDB enriches and aggregates the stream into a materialized view an application can query |
+| **8** | Every component runs under its own least-privilege principal |
+| **9** | It survives a broker loss with no data lost, replays history from tiered storage, and is reachable over HTTP |
+
+By the final afternoon they have an application, not a folder of snippets.
 
 **Uneven pace is planned for.** Every lab has a *Go further* stretch task. Fast
 participants extend; everyone else moves on at the same time. No one waits and no one is
@@ -101,20 +133,21 @@ finish able to read what the operations team sees.
 
 By the end of the course, participants will be able to:
 
-- Name every component of Confluent Platform, what it costs, and when to reach for it
-- Operate the platform as a developer through **Control Center** and the **`confluent` CLI**
-- Write, tune, and diagnose producers and consumers using **Confluent Monitoring Interceptors**
-  and Control Center's end-to-end latency and consumer-lag views
-- Choose and configure delivery guarantees, including exactly-once with transactions
-- Design and evolve **data contracts** in Confluent Schema Registry — compatibility modes,
-  schema references, rules, and field-level encryption
-- Enforce those contracts **at the broker** with schema validation, so bad data cannot land
-- Build pipelines with Kafka Connect and Confluent Hub connectors, managed from Control Center
-- Write stream processing in **ksqlDB** — streams, tables, push and pull queries, materialized views
-- Work within **RBAC**: understand principals, role bindings, and what to request from the
-  platform team
-- Exploit **Tiered Storage** and **Cluster Linking** as application design options, not just
-  operational features
+| # | Objective | Covered in |
+|---|---|---|
+| 1 | Name every component of Confluent Platform, what it costs, and when to reach for it | Module 1 |
+| 2 | Operate the platform as a developer through **Control Center** and the **`confluent` CLI** | Modules 1, 3 |
+| 3 | Write, tune, and diagnose producers and consumers using **Confluent Monitoring Interceptors** and Control Center's end-to-end latency and consumer-lag views | Modules 2, 3 |
+| 4 | Choose and configure delivery guarantees, including exactly-once with transactions | Modules 2, 3 |
+| 5 | Design and evolve **data contracts** in Confluent Schema Registry — compatibility modes, schema references, rules, and field-level encryption | Modules 4, 5 |
+| 6 | Enforce those contracts **at the broker** with schema validation, so bad data cannot land | Module 5 |
+| 7 | Build pipelines with Kafka Connect and Confluent Hub connectors, managed from Control Center | Module 6 |
+| 8 | Write stream processing in **ksqlDB** — streams, tables, push and pull queries, materialized views | Module 7 |
+| 9 | Work within **RBAC**: understand principals, role bindings, and what to request from the platform team | Module 8 |
+| 10 | Exploit **Tiered Storage** and **Cluster Linking** as application design options, not just operational features | Module 9 |
+
+Every module maps to at least one objective, and every objective is exercised at the
+keyboard rather than only described.
 
 ---
 
