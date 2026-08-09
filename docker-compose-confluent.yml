@@ -32,12 +32,17 @@
 #                                                        --profile ksqldb \
 #                                                        --profile restproxy up -d
 #
-# LICENSING — READ BEFORE BUILDING THE VM IMAGE:
-#   Control Center and the cp-server enterprise features run on a 30-day trial
-#   when no license key is set. The trial clock starts when the cluster is first
-#   formed, NOT when the image is built, so a golden image is safe to bake early
-#   as long as students start from empty volumes. If ProTech supplies an
-#   Enterprise license, set CONFLUENT_LICENSE below on every broker.
+# LICENSING:
+#   The client holds a Confluent subscription, so the enterprise features taught
+#   here (Control Center, RBAC, Tiered Storage, Cluster Linking, broker-side
+#   schema validation) are licensed in their own environment — the course is
+#   teaching capability they own, not an upsell.
+#
+#   For the CLASSROOM cluster, set CONFLUENT_LICENSE on every broker if a key is
+#   made available for the training VMs. Without a key the stack still runs on
+#   the built-in 30-day trial; that clock starts when the cluster first forms,
+#   NOT when the image is built, so a golden image can be baked early as long as
+#   students start from empty volumes.
 
 x-cp-broker-common: &cp-broker-common
   image: confluentinc/cp-server:7.9.9

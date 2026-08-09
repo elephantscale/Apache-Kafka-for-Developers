@@ -1,6 +1,6 @@
 # Confluent Platform for Developers
 
-**Format:** 3 days. **Approximately two-thirds of class time is spent at the keyboard.**
+**Format:** 3 days. **Roughly half the class time is spent at the keyboard.**
 Optional 4th day (see *Add-On Modules*).
 **Level:** Intermediate. Assumes Kafka fundamentals.
 **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free.
@@ -60,10 +60,15 @@ same four-beat rhythm, and three of the four beats are hands-on:
 
 | Beat | Time | What happens |
 |---|---|---|
-| **Probe** | ~10 min | A hands-on task participants cannot yet complete. They hit the wall first. |
-| **Explain** | ~20 min | The concept — delivered as the answer to what they just ran into. |
-| **Build** | ~40 min | The substantial lab. Working code or working configuration. |
+| **Probe** | ~15 min | A hands-on task participants cannot yet complete. They hit the wall first. |
+| **Explain** | ~30 min | The concept — delivered as the answer to what they just ran into. |
+| **Build** | ~50 min | The substantial lab. Working code or working configuration. |
 | **Break it** | ~15 min | Deliberately break what they built and read the failure. |
+
+**The teaching day is 08:30 to 16:30 with an hour for lunch.** Three modules a day, two
+breaks, and time at the end of each afternoon to extend the running application. Timings
+above are a rhythm, not a stopwatch — the instructor moves the boundary when a room needs
+longer on something, which is the point of the *Go further* tasks.
 
 The *Probe* is what makes this stick. Participants measure a slow producer before anyone
 says the word `linger.ms`; they watch a consumer group leave two members idle before
@@ -117,10 +122,34 @@ By the end of the course, participants will be able to:
 
 ## Module 1 — What Confluent Platform Adds to Apache Kafka
 
-**Concept.** The component map: `cp-server` vs. the Apache broker. Licensing tiers and why
-a developer cares — Apache 2.0, Confluent Community, Confluent Enterprise. Confluent
-Platform vs. Confluent Cloud. Version mapping (CP 7.9 ≈ Kafka 3.9, CP 8.x ≈ Kafka 4.x) and
-how to read Confluent's docs correctly.
+**Topics covered**
+
+### 1.A The component map
+
+- `cp-server` versus the Apache broker — what the Confluent broker adds and why it matters
+- Control Center, Schema Registry, Connect, ksqlDB, REST Proxy, Metadata Service
+- Which components are mandatory, which are optional, and what each costs to run
+- How the pieces fit together in a typical enterprise deployment
+
+### 1.B Licensing tiers, and what your subscription entitles you to
+
+- Apache 2.0, Confluent Community License, Confluent Enterprise — what falls where
+- **Which capabilities your Confluent subscription unlocks**, so developers design against
+  features they are actually licensed to use rather than avoiding them out of caution
+- How to tell, from the documentation alone, which tier a feature belongs to
+- What a developer should confirm with the platform team before building on a feature
+
+### 1.C Confluent Platform versus Confluent Cloud
+
+- Self-managed and fully managed side by side
+- What changes for application code, and what does not
+- What transfers if the organisation later moves to Cloud
+
+### 1.D Reading Confluent's documentation correctly
+
+- Version mapping: CP 7.9 ≈ Kafka 3.9, CP 8.x ≈ Kafka 4.x
+- Telling Platform docs from Cloud docs — the most common source of wasted time
+- Spotting whether a documented feature is Community or Enterprise before relying on it
 
 **Hands-on**
 
@@ -136,10 +165,41 @@ how to read Confluent's docs correctly.
 
 ## Module 2 — Producers on Confluent Platform
 
-**Concept.** Producer architecture: accumulator, batching, sender thread. The four configs
-that matter — `linger.ms`, `batch.size`, `compression.type`, `acks`. Idempotence (default
-since Kafka 3.0), `max.in.flight.requests.per.connection`, ordering. Partitioning and
-murmur2 key hashing. Confluent Monitoring Interceptors.
+**Topics covered**
+
+### 2.A Producer architecture
+
+- The record accumulator, batching, and the sender thread
+- What actually happens between `send()` returning and the record reaching a broker
+- Why `send()` is asynchronous, and what that means for error handling
+- Callbacks, futures, and where exceptions really surface
+
+### 2.B Throughput and latency
+
+- `linger.ms` and `batch.size` — the two knobs that dominate throughput
+- `compression.type` — the trade between CPU, network, and broker storage
+- Finding the knee in the curve rather than copying values from a blog post
+- Buffer exhaustion: `buffer.memory`, `max.block.ms`, and what backpressure looks like
+
+### 2.C Durability and ordering
+
+- `acks=0`, `1`, and `all`, and what each one actually risks
+- `min.insync.replicas` as the other half of the `acks=all` contract
+- Idempotence — default since Kafka 3.0 — and the guarantee it provides
+- `max.in.flight.requests.per.connection`, retries, and preserving order
+- Transactions and exactly-once semantics: when they are worth the cost
+
+### 2.D Partitioning
+
+- How keys map to partitions, and murmur2 hashing
+- Choosing a key: ordering guarantees versus partition skew
+- Custom partitioners — and an honest look at when they are worth writing
+
+### 2.E Observability with Confluent tooling
+
+- Confluent Monitoring Interceptors — two lines of configuration
+- Reading producer end-to-end latency in Control Center
+- Diagnosing a mis-tuned producer from the UI rather than from log files
 
 **Hands-on**
 
@@ -155,10 +215,45 @@ murmur2 key hashing. Confluent Monitoring Interceptors.
 
 ## Module 3 — Consumers, Groups, and Lag in Control Center
 
-**Concept.** The poll loop; `max.poll.records`, `max.poll.interval.ms`, and the
-stop-the-world failure. Commit strategies and how commit *ordering* decides at-least-once
-vs. at-most-once. `auto.offset.reset` and why it is ignored when a committed offset exists.
-Rebalancing: eager, cooperative-sticky, KIP-848. Consumer lag in Control Center.
+**Topics covered**
+
+### 3.A The poll loop
+
+- What `poll()` really does — fetching, heartbeating, and rebalance participation
+- `max.poll.records` and `max.poll.interval.ms`
+- The stop-the-world failure: slow processing evicts the consumer, which triggers a
+  rebalance, which makes processing slower still
+- Separating processing from polling when work is genuinely slow
+
+### 3.B Offset commits and delivery semantics
+
+- Auto-commit versus manual commit, and why auto-commit surprises people
+- `commitSync` and `commitAsync` — cost, blocking, and failure behaviour
+- **Commit ordering is the whole game**: committing before processing gives at-most-once,
+  after processing gives at-least-once
+- Why exactly-once needs more than a commit strategy
+- Storing offsets outside Kafka, and when that is justified
+
+### 3.C Where a consumer starts
+
+- `auto.offset.reset` — `earliest`, `latest`, `none`
+- Why it is ignored whenever a committed offset already exists, which is the single most
+  common misunderstanding in this area
+- Seeking deliberately: replaying a window of history on demand
+
+### 3.D Groups and rebalancing
+
+- Group membership, partition assignment, and the partition-count ceiling
+- Assignment strategies: eager, cooperative-sticky, and KIP-848
+- What a rebalance costs in a live application, and how to reduce it
+- Static membership for rolling restarts
+
+### 3.E Lag in Control Center
+
+- Reading consumer lag, and what a healthy lag curve looks like under load
+- Why **lag alone can lie** — a consumer that commits early reports zero lag while
+  dropping records
+- Consumer-group views the operations team will be watching
 
 **Hands-on**
 
@@ -181,10 +276,40 @@ Rebalancing: eager, cooperative-sticky, KIP-848. Consumer lag in Control Center.
 
 ## Module 4 — Confluent Schema Registry in Depth
 
-**Concept.** Subjects, versions, IDs, and the wire format. Subject naming strategies —
-TopicName, RecordName, TopicRecordName — and their design consequences. Compatibility
-modes chosen from *who upgrades first*. Avro, Protobuf, and JSON Schema side by side.
-Schema references. Schema Linking across environments.
+**Topics covered**
+
+### 4.A The wire format and schema identity
+
+- Subjects, versions, and schema IDs — three things people routinely conflate
+- The magic byte and the schema ID carried in every record
+- What a consumer does when it meets an ID it has never seen
+- Why a raw `kafka-console-consumer` shows garbage on a schema-backed topic
+
+### 4.B Subject naming strategies
+
+- TopicName, RecordName, and TopicRecordName
+- The design consequence of each: one schema per topic, or many
+- Which strategy to choose when a topic legitimately carries several event types
+
+### 4.C Compatibility modes
+
+- BACKWARD, FORWARD, FULL, and their `_TRANSITIVE` forms
+- **Choosing the mode from who upgrades first** — consumers or producers — rather than
+  picking a default and hoping
+- What each mode permits and forbids: adding fields, removing fields, defaults
+- Compatibility checked at registration time, before bad data exists
+
+### 4.D Avro, Protobuf, and JSON Schema
+
+- The three formats side by side: tooling, code generation, payload size, readability
+- Where each is the sensible default
+- Migration realities when an organisation already has one of them
+
+### 4.E Composition and portability
+
+- Schema references — composing schemas instead of copying fields
+- Schema Linking: moving schemas between development, test, and production
+- Keeping registries consistent across environments
 
 **Hands-on**
 
@@ -199,10 +324,36 @@ Schema references. Schema Linking across environments.
 
 ## Module 5 — Data Contracts and Broker-Side Enforcement
 
-**Concept.** Broker-side schema validation — a `cp-server` capability with no Apache Kafka
-equivalent. What the producer sees when the broker rejects it. Data Contracts: schema
-metadata, domain rules, validation rules. Client-Side Field-Level Encryption. Migration
-rules. Where enforcement belongs — client, broker, or both.
+**Topics covered**
+
+### 5.A Broker-side schema validation
+
+- A `cp-server` capability with no Apache Kafka equivalent: the **broker** refuses data
+  that does not carry a registered schema
+- Enabling it per topic with `confluent.value.schema.validation`
+- Key validation and value validation as separate decisions
+- Exactly what the producer sees when the broker rejects a record, and how to handle it
+- Why a client-side serializer is not enough: any process with network access can bypass it
+
+### 5.B Data Contracts
+
+- A contract as more than a schema: metadata, domain rules, and migration rules
+- Domain rules that reject records which are schema-valid but semantically wrong
+- Migration rules for evolving data without breaking existing consumers
+- Ownership and documentation travelling with the schema
+
+### 5.C Client-Side Field-Level Encryption (CSFLE)
+
+- Encrypting individual fields — PII — rather than the whole payload
+- What an unauthorised reader sees, including in the Control Center message browser
+- Key management, and what happens to a consumer without the key
+- Where CSFLE fits alongside TLS and disk encryption, which solve different problems
+
+### 5.D Where enforcement belongs
+
+- Client, broker, or both — the trade-offs stated plainly
+- Performance and operational cost of broker-side validation
+- Designing a rollout that does not break producers already in flight
 
 **Hands-on**
 
@@ -219,10 +370,46 @@ rules. Where enforcement belongs — client, broker, or both.
 
 ## Module 6 — Kafka Connect the Confluent Way
 
-**Concept.** Workers, connectors, tasks; distributed mode and the internal topics.
-Confluent Hub: community, commercially-licensed, and Confluent-supported connectors, and
-how to tell which you are installing. Converters and their Schema Registry coupling.
-Single Message Transforms. Dead letter queues. RBAC for Connect principals.
+**Topics covered**
+
+### 6.A The Connect runtime
+
+- Workers, connectors, and tasks — what actually runs where
+- Distributed mode and the three internal topics (`configs`, `offsets`, `status`)
+- Scaling by task, and why a connector's parallelism has a ceiling
+- Where Connect state lives, and what survives a worker restart
+
+### 6.B Sourcing connectors from Confluent Hub
+
+- Community, commercially-licensed, and Confluent-supported connectors
+- **How to tell which one you are installing** before it reaches production
+- Versioning and upgrade practice
+- Installing into an image versus installing at container start
+
+### 6.C Converters and Schema Registry
+
+- Key and value converters, and how they couple Connect to Schema Registry
+- Avro, Protobuf, JSON Schema, String, and ByteArray converters
+- **Converter mismatch — the single most common Connect failure in production**
+- Reading a failed task's stack trace and working back to the misconfigured converter
+
+### 6.D Transformations
+
+- Single Message Transforms: reshaping records in flight without touching the producer
+- Chaining transforms, and the point at which a stream processor is the better answer
+- Predicates for applying a transform selectively
+
+### 6.E Failure handling
+
+- Dead letter queues: routing poison records instead of stopping the connector
+- The failure headers on a DLQ record, and what they tell you
+- `errors.tolerance` and deciding what a pipeline should survive
+
+### 6.F Security for connectors
+
+- RBAC for Connect principals — a connector is a client and needs its own identity
+- Scoping a connector's permissions to the topics it genuinely needs
+- Keeping credentials out of connector configuration
 
 **Hands-on**
 
@@ -242,11 +429,46 @@ Single Message Transforms. Dead letter queues. RBAC for Connect principals.
 
 ## Module 7 — ksqlDB
 
-**Concept.** Streams vs. tables and why the duality is the whole idea. Push queries
-(`EMIT CHANGES`) vs. pull queries. Joins: stream-stream, stream-table, table-table.
-Windowing: tumbling, hopping, session. Materialized views. Exactly-once in ksqlDB.
-Where Confluent is heading with Apache Flink, and when to choose ksqlDB, Kafka Streams,
-or Flink.
+**Topics covered**
+
+### 7.A Streams and tables
+
+- The stream–table duality, and why it is the whole idea rather than a detail
+- A stream as a log of events; a table as the current state that log implies
+- `CREATE STREAM` and `CREATE TABLE` over existing topics
+- Why the choice between them is a modelling decision, not a syntax preference
+
+### 7.B Push and pull queries
+
+- Push queries (`EMIT CHANGES`) — a query that never ends
+- Pull queries — point-in-time lookups against materialized state
+- Which one belongs in an application, and which in a console
+- Serving an application from a pull query over the REST API
+
+### 7.C Joins
+
+- Stream–stream joins and the windowing they require
+- Stream–table joins for enrichment — the most common production pattern
+- Table–table joins
+- Co-partitioning: the requirement that quietly breaks joins in practice
+
+### 7.D Windowing and aggregation
+
+- Tumbling, hopping, and session windows, and what each is for
+- Late-arriving data and grace periods
+- Aggregations into materialized views
+
+### 7.E Guarantees and operations
+
+- Exactly-once processing in ksqlDB, and proving it under a forced restart
+- What ksqlDB state costs, and where it is stored
+- Managing queries from Control Center
+
+### 7.F Choosing between ksqlDB, Kafka Streams, and Flink
+
+- SQL versus a JVM library: expressiveness against operational control
+- Where Confluent is heading with Apache Flink
+- An honest comparison, including what SQL gives up
 
 **Hands-on**
 
@@ -261,10 +483,39 @@ or Flink.
 
 ## Module 8 — RBAC and Secure Development
 
-**Concept.** The Metadata Service and how Confluent Platform authorization actually works.
-Principals, service accounts, role bindings. The developer-relevant roles — `DeveloperRead`,
-`DeveloperWrite`, `DeveloperManage`, `ResourceOwner` — scoped to topics, groups, subjects,
-and connectors. Reading an authorization failure. Secrets in client configs.
+**Topics covered**
+
+### 8.A How authorization works in Confluent Platform
+
+- The Metadata Service (MDS) and what it adds over Apache Kafka ACLs
+- Authentication versus authorization — routinely confused, and different problems
+- Where authorization decisions are made and how they are cached
+
+### 8.B Principals and service accounts
+
+- Users, service accounts, and choosing an identity for an application
+- Why applications should not run as a human's principal
+- What a developer requests, and what the platform team provisions
+
+### 8.C Roles and scopes
+
+- The developer-relevant roles: `DeveloperRead`, `DeveloperWrite`, `DeveloperManage`,
+  `ResourceOwner`
+- Scoping a binding to topics, consumer groups, Schema Registry subjects, and connectors
+- Prefix and literal resource patterns
+- **Finding true least privilege empirically** — narrowing a binding until it breaks
+
+### 8.D Diagnosing authorization failures
+
+- Reading the exception and working back to the missing permission
+- Distinguishing a permissions failure from a connectivity or authentication failure
+- Consumer groups and subjects as separately-secured resources people forget
+
+### 8.E Secrets and client configuration
+
+- Keeping credentials out of source control and configuration files
+- Where secrets belong in a deployed application
+- Writing an access request the platform team can act on without a follow-up conversation
 
 **Hands-on**
 
@@ -279,10 +530,39 @@ and connectors. Reading an authorization failure. Secrets in client configs.
 
 ## Module 9 — Platform Features That Change Application Design
 
-**Concept.** Tiered Storage and what effectively-infinite retention does to your design
-options. Cluster Linking versus MirrorMaker 2. Self-Balancing Clusters. REST Proxy for
-callers that cannot host a Java client. Health+ and what your operations team watches.
-Quotas and what throttling does to your client.
+**Topics covered**
+
+### 9.A Tiered Storage
+
+- Hot local storage and cold object storage behind one topic
+- What effectively-unlimited retention changes about application design — replay,
+  bootstrapping a new consumer, and audit
+- The cold-read latency penalty, measured rather than assumed
+- When retention becomes a design choice instead of a cost constraint
+
+### 9.B Cluster Linking
+
+- Byte-for-byte topic mirroring with offsets preserved
+- How that differs from MirrorMaker 2, and why offset translation matters
+- Consuming from a linked topic, and the failover contract an application must honour
+- Use cases: disaster recovery, data locality, and migration
+
+### 9.C Self-Balancing Clusters
+
+- Automatic partition rebalancing versus manual reassignment plans
+- What a developer notices while rebalancing is under way
+
+### 9.D REST Proxy
+
+- Producing and consuming over HTTP for callers that cannot host a Java client
+- The integration path for non-JVM languages and legacy systems
+- Where the REST Proxy is the right answer, and where it is a workaround
+
+### 9.E Operations, seen from the application side
+
+- Health+ and what the operations team actually watches
+- Quotas and throttling — what a throttled client experiences, and how to behave well
+- Reading the signals that predict trouble before an incident
 
 **Hands-on**
 
