@@ -712,6 +712,11 @@ source, or a second cluster. Those are what Module 8 and exercise 9.2 demonstrat
 they run on the instructor's environment rather than being provisioned sixteen times.
 Keeping them off the student image is what holds the VM at 16 GB.
 
+**The `confluent` CLI is installed on each VM**, not inside a container — it is one of the
+two interfaces this course teaches, alongside Control Center. It drives the cluster through
+the Admin REST API that `cp-server` exposes on port 8090, so no Metadata Service is
+required for the CLI exercises in Module 1.
+
 Client code is Java 17 + Maven, in a ready-made single Maven project — participants write
 lab classes, not build files. A one-command startup script brings the environment up each
 morning and verifies it is healthy before class begins.

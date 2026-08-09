@@ -104,6 +104,12 @@ services:
     container_name: cp-kafka-1
     ports:
       - "9092:9094"   # host 9092 -> cp-kafka-1 HOST listener
+      # cp-server's embedded Admin REST API. This is what the `confluent` CLI
+      # drives against a self-managed cluster, so without it published the CLI
+      # exercises in Module 1 have nothing to talk to:
+      #   confluent kafka topic list --url http://localhost:8090/kafka
+      # Verified returning HTTP 200 on this stack. Only broker 1 needs it.
+      - "8090:8090"
     environment:
       <<: *cp-broker-env
       KAFKA_NODE_ID: "1"
