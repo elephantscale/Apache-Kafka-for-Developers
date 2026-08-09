@@ -1,0 +1,337 @@
+# Confluent Platform for Developers — lab cluster
+#
+# Confluent Platform 7.9 (self-managed) in KRaft mode. Three combined
+# broker+controller `cp-server` nodes + Control Center + Schema Registry,
+# with Connect / ksqlDB / REST Proxy behind profiles.
+#
+# WHY cp-server AND NOT apache/kafka:
+#   Half this course is capability the Apache broker does not have —
+#   broker-side schema validation, Tiered Storage, Cluster Linking,
+#   Self-Balancing, and the metrics stream Control Center reads. All of it
+#   lives in `cp-server`. Swapping the image is the whole point.
+#
+# WHY EVERYTHING IS NAMED cp-*:
+#   So this stack can never collide with another Kafka course's containers on
+#   the same machine (the Apache stack in this repo, or Advanced-Kafka-Streaming,
+#   both of which use kafka-1/kafka-2/kafka-3). Lab commands read
+#   `docker exec cp-kafka-1 ...` and are unambiguous about which cluster.
+#
+# LISTENERS (same design as the Apache stack, so the labs read the same):
+#   CONTROLLER (:9093)  KRaft controller quorum, docker network only.
+#   PLAINTEXT  (:9092)  Inter-broker + in-container clients + platform services.
+#                       Advertised by docker name, so `docker exec cp-kafka-1 ...
+#                       --bootstrap-server localhost:9092` follows metadata to
+#                       leaders on ANY broker.
+#   HOST       (:9094)  Clients on your machine. Advertised as localhost:909X
+#                       and published to that host port. NOT used in containers.
+#
+# BRING-UP, BY DAY (keeps peak memory down; each day adds to the last):
+#   Day 1  docker compose -f docker-compose-confluent.yml up -d
+#   Day 2  docker compose -f docker-compose-confluent.yml --profile connect up -d
+#   Day 3  docker compose -f docker-compose-confluent.yml --profile connect \
+#                                                        --profile ksqldb \
+#                                                        --profile restproxy up -d
+#
+# LICENSING — READ BEFORE BUILDING THE VM IMAGE:
+#   Control Center and the cp-server enterprise features run on a 30-day trial
+#   when no license key is set. The trial clock starts when the cluster is first
+#   formed, NOT when the image is built, so a golden image is safe to bake early
+#   as long as students start from empty volumes. If ProTech supplies an
+#   Enterprise license, set CONFLUENT_LICENSE below on every broker.
+
+x-cp-broker-common: &cp-broker-common
+  image: confluentinc/cp-server:7.9.9
+  networks: [confluent]
+  healthcheck:
+    test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+    interval: 10s
+    timeout: 10s
+    retries: 20
+    start_period: 30s
+
+x-cp-broker-env: &cp-broker-env
+  # Cap each broker's heap. cp-server defaults to ~1 GB; three of those plus
+  # Control Center will swap-thrash a 12 GB VM. 768m x3 leaves room for C3.
+  KAFKA_HEAP_OPTS: "-Xmx768m -Xms768m"
+  CLUSTER_ID: "5L6g3nShT-eMCtK--X86sw"
+  KAFKA_PROCESS_ROLES: "broker,controller"
+  KAFKA_CONTROLLER_QUORUM_VOTERS: "1@cp-kafka-1:9093,2@cp-kafka-2:9093,3@cp-kafka-3:9093"
+  KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+  KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:9094"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT"
+
+  # Internal topics replicate across all three brokers.
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "3"
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "2"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+
+  # ---- Control Center's data source -------------------------------------
+  # cp-server ships the Confluent Metrics Reporter; C3's broker/topic/latency
+  # views are empty without it. This is the line that makes C3 useful.
+  KAFKA_METRIC_REPORTERS: "io.confluent.metrics.reporter.ConfluentMetricsReporter"
+  CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+  CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: "3"
+  CONFLUENT_METRICS_ENABLE: "true"
+
+  # ---- Broker-side schema validation (Module 5) --------------------------
+  # Points the BROKER at Schema Registry. Validation stays OFF cluster-wide;
+  # students turn it on per topic with
+  #   confluent.value.schema.validation=true
+  # which is exactly Exercise 5.2 — the producer that landed in 5.1 is now
+  # rejected by the broker, not by the client.
+  KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: "http://cp-schema-registry:8081"
+
+  # Self-Balancing is a Module 9 *concept*, not a lab. Leave it off — it costs
+  # memory and starts a rebalance engine we never use.
+  KAFKA_CONFLUENT_BALANCER_ENABLE: "false"
+
+  # If ProTech provides an Enterprise license, set it here (all three brokers):
+  # CONFLUENT_LICENSE: "<key>"
+
+services:
+  # =====================================================================
+  # CORE — Day 1 onward. 3 brokers + Schema Registry + Control Center.
+  # =====================================================================
+  cp-kafka-1:
+    <<: *cp-broker-common
+    container_name: cp-kafka-1
+    ports:
+      - "9092:9094"   # host 9092 -> cp-kafka-1 HOST listener
+    environment:
+      <<: *cp-broker-env
+      KAFKA_NODE_ID: "1"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://cp-kafka-1:9092,HOST://localhost:9092"
+
+  cp-kafka-2:
+    <<: *cp-broker-common
+    container_name: cp-kafka-2
+    ports:
+      - "9093:9094"   # host 9093 -> cp-kafka-2 HOST listener
+    environment:
+      <<: *cp-broker-env
+      KAFKA_NODE_ID: "2"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://cp-kafka-2:9092,HOST://localhost:9093"
+
+  cp-kafka-3:
+    <<: *cp-broker-common
+    container_name: cp-kafka-3
+    ports:
+      - "9094:9094"   # host 9094 -> cp-kafka-3 HOST listener
+    environment:
+      <<: *cp-broker-env
+      KAFKA_NODE_ID: "3"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://cp-kafka-3:9092,HOST://localhost:9094"
+
+  cp-schema-registry:
+    image: confluentinc/cp-schema-registry:7.9.9
+    container_name: cp-schema-registry
+    networks: [confluent]
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: "cp-schema-registry"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "3"
+      # Module 4 changes this per subject; BACKWARD is the default students meet first.
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: "backward"
+      SCHEMA_REGISTRY_HEAP_OPTS: "-Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/subjects >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      cp-kafka-1: {condition: service_healthy}
+      cp-kafka-2: {condition: service_healthy}
+      cp-kafka-3: {condition: service_healthy}
+
+  # ---- Control Center: the primary UI for the entire course ----
+  cp-control-center:
+    image: confluentinc/cp-enterprise-control-center:7.9.9
+    container_name: cp-control-center
+    networks: [confluent]
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://cp-schema-registry:8081"
+      # C3's own internal topics — must fit the 3-broker cluster.
+      CONTROL_CENTER_REPLICATION_FACTOR: "3"
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: "3"
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: "3"
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_REPLICATION: "3"
+      CONFLUENT_METRICS_TOPIC_REPLICATION: "3"
+      # Registered here so C3 manages them once their profiles are up (Days 2-3).
+      CONTROL_CENTER_CONNECT_CONNECT-DEFAULT_CLUSTER: "http://cp-connect:8083"
+      CONTROL_CENTER_KSQL_KSQLDB1_URL: "http://cp-ksqldb-server:8088"
+      CONTROL_CENTER_KSQL_KSQLDB1_ADVERTISED_URL: "http://localhost:8088"
+      # C3 is the memory hog in this stack. 2 GB is the practical floor; below
+      # that it starts, then dies under the metrics load partway through Day 1.
+      CONTROL_CENTER_OPTS: "-Xmx2g -Xms1g"
+      PORT: "9021"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9021/healthcheck >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    depends_on:
+      cp-kafka-1: {condition: service_healthy}
+      cp-kafka-2: {condition: service_healthy}
+      cp-kafka-3: {condition: service_healthy}
+      cp-schema-registry: {condition: service_healthy}
+
+  # =====================================================================
+  # PROFILE: connect — Day 2, Module 6 (JDBC source, S3 sink, DLQ)
+  # =====================================================================
+  cp-postgres:
+    image: postgres:16
+    container_name: cp-postgres
+    profiles: ["connect"]
+    networks: [confluent]
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "kafka"
+      POSTGRES_PASSWORD: "kafka"
+      POSTGRES_DB: "inventory"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kafka -d inventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cp-minio:
+    image: minio/minio:latest
+    container_name: cp-minio
+    profiles: ["connect"]
+    networks: [confluent]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cp-connect:
+    image: confluentinc/cp-kafka-connect:7.9.9
+    container_name: cp-connect
+    profiles: ["connect"]
+    networks: [confluent]
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "cp-connect"
+      CONNECT_GROUP_ID: "connect-cluster"
+      CONNECT_CONFIG_STORAGE_TOPIC: "_connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "_connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "_connect-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "3"
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "io.confluent.connect.avro.AvroConverter"
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "http://cp-schema-registry:8081"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      # Exercise 6.3 diagnoses a converter mismatch from the failed task trace
+      # in Control Center, so the interceptors must be on the Connect workers.
+      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      KAFKA_HEAP_OPTS: "-Xmx1g"
+    command:
+      - bash
+      - -c
+      - |
+        confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
+        /etc/confluent/docker/run
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      cp-kafka-1: {condition: service_healthy}
+      cp-schema-registry: {condition: service_healthy}
+
+  # =====================================================================
+  # PROFILE: ksqldb — Day 3, Module 7
+  # =====================================================================
+  cp-ksqldb-server:
+    image: confluentinc/cp-ksqldb-server:7.9.9
+    container_name: cp-ksqldb-server
+    profiles: ["ksqldb"]
+    networks: [confluent]
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+      KSQL_LISTENERS: "http://0.0.0.0:8088"
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://cp-schema-registry:8081"
+      KSQL_KSQL_SERVICE_ID: "kafka-labs-"
+      KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: "3"
+      KSQL_KSQL_STREAMS_REPLICATION_FACTOR: "3"
+      # Module 7's "Go further" proves exactly-once under a forced restart.
+      KSQL_KSQL_STREAMS_PROCESSING_GUARANTEE: "exactly_once_v2"
+      KSQL_HEAP_OPTS: "-Xmx1g"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8088/info >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 45s
+    depends_on:
+      cp-kafka-1: {condition: service_healthy}
+      cp-schema-registry: {condition: service_healthy}
+
+  cp-ksqldb-cli:
+    image: confluentinc/cp-ksqldb-cli:7.9.9
+    container_name: cp-ksqldb-cli
+    profiles: ["ksqldb"]
+    networks: [confluent]
+    entrypoint: /bin/sh
+    tty: true
+    depends_on:
+      cp-ksqldb-server: {condition: service_healthy}
+
+  # =====================================================================
+  # PROFILE: restproxy — Day 3, Exercise 9.3 (curl-only produce/consume)
+  # =====================================================================
+  cp-rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.9.9
+    container_name: cp-rest-proxy
+    profiles: ["restproxy"]
+    networks: [confluent]
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_HOST_NAME: "cp-rest-proxy"
+      KAFKA_REST_BOOTSTRAP_SERVERS: "cp-kafka-1:9092,cp-kafka-2:9092,cp-kafka-3:9092"
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://cp-schema-registry:8081"
+      KAFKAREST_HEAP_OPTS: "-Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/topics >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    depends_on:
+      cp-kafka-1: {condition: service_healthy}
+      cp-schema-registry: {condition: service_healthy}
+
+networks:
+  confluent:
+    name: confluent
