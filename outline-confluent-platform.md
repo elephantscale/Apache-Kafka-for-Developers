@@ -320,13 +320,23 @@ is blocked by another participant's mistake.
 
 | Service | Image | Notes |
 |---|---|---|
-| Brokers ×3 | `confluentinc/cp-server:7.9.8` | KRaft mode, combined broker+controller |
-| Control Center | `confluentinc/cp-enterprise-control-center:7.9.8` | Primary UI for the whole course |
-| Schema Registry | `confluentinc/cp-schema-registry:7.9.8` | |
-| ksqlDB Server + CLI | `confluentinc/cp-ksqldb-server:7.9.8`, `cp-ksqldb-cli:7.9.8` | Day 3 |
-| Kafka Connect | `confluentinc/cp-kafka-connect:7.9.8` | JDBC + S3 from Confluent Hub |
-| REST Proxy | `confluentinc/cp-kafka-rest:7.9.8` | Day 3 |
+| Brokers ×3 | `confluentinc/cp-server:7.9.9` | KRaft mode, combined broker+controller |
+| Control Center | `confluentinc/cp-enterprise-control-center:7.9.9` | Primary UI for the whole course |
+| Schema Registry | `confluentinc/cp-schema-registry:7.9.9` | |
+| ksqlDB Server + CLI | `confluentinc/cp-ksqldb-server:7.9.9`, `cp-ksqldb-cli:7.9.9` | Day 3 |
+| Kafka Connect | `confluentinc/cp-kafka-connect:7.9.9` | JDBC + S3 from Confluent Hub |
+| REST Proxy | `confluentinc/cp-kafka-rest:7.9.9` | Day 3 |
 | Postgres, MinIO | `postgres:16`, `minio/minio` | Connect endpoints, not Kafka components |
+
+**VM sizing — 4 vCPU, 16 GB RAM, 40 GB free disk per participant.** These are measured
+numbers, not estimates: the Day 1 core alone (three brokers, Schema Registry, Control
+Center) holds 4.5 GB resident, and Control Center accounts for the largest single share.
+Days 2 and 3 add Connect, ksqlDB, and REST Proxy on top, alongside a Maven build and an
+IDE. **A 12 GB VM is not sufficient** — Control Center starts on less and then fails
+partway through the day under metrics load, which costs classroom time to diagnose.
+
+Services are started by day rather than all at once, so no VM carries the full stack
+before it is needed.
 
 Client code is Java 17 + Maven, in a ready-made single Maven project — participants write
 lab classes, not build files. A one-command startup script brings the environment up each
