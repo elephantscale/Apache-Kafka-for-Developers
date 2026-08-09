@@ -21,12 +21,37 @@ REST Proxy, and RBAC. Participants drive the platform through **Control Center a
 (`kafka-topics.sh` and friends) appear only where they are still the right tool, and are
 named as such.
 
-Roughly **half of the course covers capability that has no Apache Kafka equivalent**:
-broker-side schema validation, Data Contracts, RBAC, Tiered Storage, Cluster Linking,
-Self-Balancing Clusters, Confluent Monitoring Interceptors, and ksqlDB. The other half
-covers client development — producers, consumers, delivery guarantees — taught against
-Confluent tooling, so that a mis-tuned producer is diagnosed in Control Center rather
-than in a log file.
+**Six of the nine modules — 24 of the 36 exercises — cover capability that does not exist
+in Apache Kafka.** The remaining three cover client development (producers, consumers,
+Connect) taught against Confluent tooling, so that a mis-tuned producer is diagnosed in
+Control Center rather than in a log file.
+
+## What is Confluent-specific, and where participants touch it
+
+The table below is the course's answer to "is this just Apache Kafka?" — every row is a
+capability the Apache distribution does not ship, mapped to the exercise where
+participants use it themselves.
+
+| Confluent Platform capability | In Apache Kafka | Exercises |
+|---|---|---|
+| **Control Center** — cluster, topic, consumer-lag and end-to-end latency UI | Nothing equivalent | 1.1, 1.2, 1.4, 2.2, 3.2, 3.3, 6.1, 6.3, 9.4 |
+| **`confluent` CLI** | Nothing equivalent | 1.2, Module 1 *Go further* |
+| **Confluent Monitoring Interceptors** — per-client end-to-end latency | Nothing equivalent | 2.2, 2.3 |
+| **Confluent Schema Registry** — subjects, compatibility, references | Nothing equivalent | 4.1 – 4.4 |
+| **Broker-side schema validation** — the broker rejects unregistered data | Nothing equivalent | 5.1, 5.2 |
+| **Data Contracts** — schema metadata, domain and migration rules | Nothing equivalent | Module 5 *Go further* |
+| **Client-Side Field-Level Encryption (CSFLE)** | Nothing equivalent | 5.3, 5.4 |
+| **Confluent Hub** — supported, versioned connectors | Community connectors only, unsupported | 6.1, 6.2 |
+| **ksqlDB** — streaming SQL, materialized views, pull queries | Kafka Streams (Java library, no SQL) | 7.1 – 7.4 |
+| **RBAC via the Metadata Service** — roles scoped to topics, groups, subjects, connectors | ACLs only — no roles, no principals service | 8.1 – 8.4 |
+| **Cluster Linking** — byte-for-byte topic mirroring, offset-preserving | MirrorMaker 2, with offset translation caveats | 9.2 |
+| **Self-Balancing Clusters** | Manual partition reassignment | Module 9 |
+| **REST Proxy** — produce and consume over HTTP | Nothing equivalent | 9.3 |
+| **Tiered Storage** | KIP-405 exists in Apache 3.9+; Confluent's is older, with broader backend support | 9.1 |
+
+> Stated plainly for the technical reviewer: **Tiered Storage and Connect are the two rows
+> with a genuine Apache counterpart**, and they are labelled as such above. Every other row
+> is capability that arrives only with Confluent Platform.
 
 ## How the course runs
 
@@ -128,7 +153,7 @@ murmur2 key hashing. Confluent Monitoring Interceptors.
   Then set `acks=all` and repeat.
 - *Go further* — Write a custom partitioner, then argue whether it was worth it.
 
-## Module 3 — Consumers, Groups, and Lag
+## Module 3 — Consumers, Groups, and Lag in Control Center
 
 **Concept.** The poll loop; `max.poll.records`, `max.poll.interval.ms`, and the
 stop-the-world failure. Commit strategies and how commit *ordering* decides at-least-once
