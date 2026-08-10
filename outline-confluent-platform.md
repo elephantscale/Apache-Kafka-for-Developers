@@ -450,7 +450,7 @@ run it yourself.
 ### 5.C Client-Side Field-Level Encryption (CSFLE)
 
 - Encrypting individual fields — PII — rather than the whole payload
-- What an unauthorised reader sees, including in the Control Center message browser
+- What an unauthorized reader sees, including in the Control Center message browser
 - Key management, and what happens to a consumer without the key
 - Where CSFLE fits alongside TLS and disk encryption, which solve different problems
 
