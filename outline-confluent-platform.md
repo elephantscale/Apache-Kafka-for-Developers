@@ -2,13 +2,13 @@
 
 © Elephant Scale, 9 August 2026
 
-- **Format:** 2 days, with an **optional 3rd day** for teams who want to build it themselves
+- **Format:** 3 days
 - **Level:** Intermediate — assumes Kafka fundamentals
 - **Platform:** Confluent Platform 7.9 (self-managed), KRaft mode — ZooKeeper-free
 - **Teaching day:** 08:30 – 16:30, with an hour for lunch
-- **Hands-on:** roughly half the class time at the keyboard
-- **Structure:** all 9 modules across the 2 core days — **14 participant exercises**, 23 instructor-led demonstrations
-- **Continuity:** one application built across both days
+- **Hands-on:** more than half the course at the keyboard — Day 3 entirely so
+- **Structure:** 9 modules taught across days 1–2, then a full day building it yourself
+- **Continuity:** one application built across all three days
 
 ---
 
@@ -59,15 +59,16 @@ so the change can be checked rather than taken on trust.
 | **2** | **9** | Platform features that change application design | Demonstrated | 60 min | Yes |
 | **2** | — | **Capstone** — the whole application under failure | **Hands-on** | 80 min | Yes |
 
-**All nine modules are delivered inside the two core days.** Nothing is cut; what changes
+**All nine modules are delivered across days 1 and 2.** Nothing is cut; what changes
 is who is at the keyboard. Three modules and the capstone are full participant labs; the
 remaining six are led from the front, with the instructor driving and the room reading
 the result together.
 
-The two figures below look inconsistent and are not: **14 participant exercises against
-23 demonstrations, yet roughly half the class time at the keyboard.** A lab runs far
-longer than a demonstration — 375 of the 720 teaching minutes are hands-on, because the
-four hands-on blocks are the long ones.
+The two figures below look inconsistent and are not: **14 participant exercises against 23
+demonstrations across days 1 and 2, yet more than half the course is spent at the
+keyboard.** A lab runs far longer than a demonstration — 375 of those two days' 720
+teaching minutes are hands-on, because the hands-on blocks are the long ones — and **Day 3
+is hands-on from start to finish.**
 
 **Why these four are hands-on.** They are the moments that do not survive being watched:
 
@@ -137,7 +138,7 @@ question.
 
 Participants follow with the environment open in front of them. Every demonstrated
 exercise is written up in full in the lab guide they keep, so anyone can run it afterwards
-— and the **optional third day** exists precisely to do that with an instructor in the room.
+— and **Day 3** exists precisely to do that with an instructor in the room.
 
 **The teaching day is 08:30 to 16:30 with an hour for lunch** — about seven hours, of
 which roughly six are module time once breaks are taken out. Timings are a rhythm, not a
@@ -254,8 +255,8 @@ rejects anything off-contract, and a PII field is encrypted.
 - Spotting whether a documented feature is Community or Enterprise before relying on it
 
 **Demonstrated** — the instructor drives this at the front; participants follow with the
-environment open. Every step is written up in full in the lab guide, and the optional third
-day is time to run it yourself.
+environment open. Every step is written up in full in the lab guide, and Day 3 is time to
+run it yourself.
 
 - **1.1 Probe** — Given a running cluster and nothing else: how many brokers, where do
   schemas live, who is consuming right now? Find out using only Control Center.
@@ -306,8 +307,8 @@ day is time to run it yourself.
 - Diagnosing a mis-tuned producer from the UI rather than from log files
 
 **Demonstrated** — the instructor drives this at the front; participants follow with the
-environment open. Every step is written up in full in the lab guide, and the optional third
-day is time to run it yourself.
+environment open. Every step is written up in full in the lab guide, and Day 3 is time to
+run it yourself.
 
 - **2.1 Probe** — Run the supplied producer. Measure its throughput. Write your number on
   the whiteboard next to everyone else's. Nobody has said `linger.ms` yet.
@@ -414,8 +415,8 @@ day is time to run it yourself.
 - Keeping registries consistent across environments
 
 **Demonstrated** — the instructor drives this at the front; participants follow with the
-environment open. Every step is written up in full in the lab guide, and the optional third
-day is time to run it yourself.
+environment open. Every step is written up in full in the lab guide, and Day 3 is time to
+run it yourself.
 
 - **4.1 Probe** — Dump the raw bytes of a record. Find the magic byte and the schema ID.
   Resolve that ID against the registry by hand.
@@ -533,8 +534,8 @@ lost.
 - Keeping credentials out of connector configuration
 
 **Demonstrated** — the instructor drives this at the front; participants follow with the
-environment open. Every step is written up in full in the lab guide, and the optional third
-day is time to run it yourself.
+environment open. Every step is written up in full in the lab guide, and Day 3 is time to
+run it yourself.
 
 - **6.1 Shown** — Deploy a JDBC source connector from Postgres, configured and started
   entirely in Control Center.
@@ -715,14 +716,14 @@ on the application they have followed since the first morning.
 
 ---
 
-# Optional Day 3 — Build It Yourself
+# Day 3 — Build It Yourself
 
-The two core days cover all nine modules, but six of them are demonstrated rather than
-built. **The optional third day is where the room runs them.**
+Days 1 and 2 cover all nine modules, but six of them are demonstrated rather than built.
+**Day 3 is where the room runs them.**
 
 It is not new material and it needs no new preparation. Every demonstrated exercise is
 written up in full in the lab guide participants keep, and every module carries a *Go
-further* stretch task. The third day is instructor-supported time to work through them on
+further* stretch task. Day 3 is instructor-supported time to work through them on
 your own cluster, with someone in the room when something does not behave.
 
 | The day is structured around | Drawn from |
@@ -733,14 +734,14 @@ your own cluster, with someone in the room when something does not behave.
 | **Building the Connect pipeline** — JDBC source, S3 sink, a converter mismatch to diagnose, a poison record to route | Module 6 |
 | **The *Go further* tasks** — custom partitioner, schema references, chained SMTs, exactly-once under restart, quota throttling | All modules |
 
-**Who it is for.** Teams who will be writing this code themselves within weeks, and teams
-with mixed experience where the slower half benefits from a second pass. Teams who mainly
-needed to understand the platform and make design decisions will get what they need from
-the two core days.
+**How the day adapts.** Teams who will be writing this code themselves within weeks work
+straight through the exercises. Rooms with mixed experience use it as a second pass, with
+the instructor pairing on whatever stalled earlier in the week. Where a group would rather
+go forward than back, any of the add-on modules below can take its place.
 
 ## Add-On Modules (substitutions, or a further day)
 
-Any of these can replace part of the optional third day, or extend the course further.
+Any of these can replace part of Day 3, or extend the course to a fourth day.
 
 | Module | Fits when |
 |---|---|
@@ -777,8 +778,8 @@ Day 2 adds Connect, ksqlDB, and REST Proxy on top, alongside a Maven build and a
 through the day under metrics load, which costs classroom time to diagnose.
 
 Services are started by day rather than all at once, so no VM carries the full stack
-before it is needed. The optional third day runs the same stack as Day 2 — it needs no
-additional provisioning.
+before it is needed. Day 3 runs the same stack as Day 2 — it needs no additional
+provisioning.
 
 The participant VM deliberately does **not** host the Metadata Service, an identity
 source, a tiered-storage backend with real history behind it, or a second cluster. Those

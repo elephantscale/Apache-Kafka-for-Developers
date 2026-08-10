@@ -34,7 +34,7 @@
 #                                                        --profile ksqldb \
 #                                                        --profile restproxy up -d
 #
-#   Optional Day 3 (participants run the demonstrated exercises themselves)
+#   Day 3  (participants run the demonstrated exercises themselves)
 #          same stack as Day 2 -- no additional provisioning
 #
 # LICENSING:
